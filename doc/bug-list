@@ -1,0 +1,129 @@
+Shutting down backend while a client is connected causes the frontend to
+remain running until the client disconnects.
+-----
+Logs indicate the auth connection is deleted, but apparently isn't really?
+Oddly, shutting down just the frontend while a client is connected works
+fine.
+- Where to work on this: collect logs, add more logging, perhaps turn on
+  select() logging ("if (0)" sections in moss_serv.cc)
+
+Shutting down backend while the frontend is connected leaves the backend port
+in TIME_WAIT. (Linux)
+-----
+Curiously, even when the listen socket is closed right away, if there are
+_connections_ in TIME_WAIT involving that port, the bind fails as well.
+*sigh*
+
+No support for VaultSetSeen.
+-----
+We have no support for it because the client does not send it (see below).
+- Where to work on this: pass message through in AuthServer, change DB to keep
+  a "seen" bit, add DB routine to set bit and fetch bits when fetching refs
+- Open questions:
+  * Is this actually a bitfield, or an integer? The values seen in traces are
+    rather mysterious (mostly 0xcc which MOSS sends for all).
+
+No vault update notifications are sent for any AgeInfo trees for child ages.
+-----
+Notifications should be sent to owners and visitors of the parent age (in
+the general case, whichever age is on top of a tree of child ages).
+- Where to work on this: notifyage() DB function
+- Open questions:
+  * Can this be done easily without adding another column to a table in the
+    DB?
+  * Do we even need to send these updates?
+  * Can child ages have owners and/or visitors? If so, they need to be
+    notified as well.
+
+DRC hoods do not have randomization.
+-----
+Hood randomization is performed by the client in the Nexus at hood creation
+time. DRC hoods are created server-side as part of player create, thus are not
+randomized.
+- Where to work on this: there has to be a way for the DB to tell the backend
+  there's a new hood and the backend has to be able to populate the SDL node
+- Open questions:
+  * What is the best approach? Have the DB createplayer() return info about
+    a new hood? Is this something that triggers would solve?
+
+The File/Auth server is not scalable to many concurrent downloads.
+-----
+The file and auth servers open and mmap each file being delivered. With
+multiple concurrent downloads, this could actually lead to exhaustion of 32-bit
+address space. It's not an issue for 64-bit systems, and would require a
+fair number of users. With a lot of users, it would also be necessary to
+crank the number of file descriptors in the kernel and per-process limits.
+- Where to work on this: FileTransaction could keep a table of currently
+  open files, and any new requests for the same file would then refer to the
+  same file descriptor/memory; all bookkeeping can be hidden in this class
+
+Changes to global SDL are not propagated to running ages.
+-----
+This was not put in because we don't have a vault manager. If we did (when we
+do?), the changes would come through the Uru protocol rather than direct DB
+access as used by global_sdl_manager. Triggers in the DB would let us do the
+updates for direct DB access, but we aren't using them.
+- Where to work on this: if changes come through the Uru protocol, add more
+  logic in backend, in the existing SDL handling for VAULT_SAVENODE
+
+
+========================================================================
+	       Bugs left over from MOUL, not bugs in MOSS
+========================================================================
+KI mail is never marked as seen.
+-----
+If you receive KI mail, an image, or a marker game, the KI flashes in the
+BlackBar at the bottom of the screen. It does this at login as well. Since
+the client never tells the server when you actually look at a message, it
+is never marked read, and each time you log in the KI flashes in the
+BlackBar.
+
+
+Logging out or exiting Uru while playing a CGZ marker game breaks the
+marker game.
+-----
+Upon logging back in, there are too many (dim) lights in the KI and the
+markers themselves don't seem to appear. It probably can be cleared up with
+some variation of starting a different game, disengaging from the scope,
+starting another, etc. until the KI has no lights with no game running.
+Otherwise it will require cleaning up the game state in the chronicle node.
+
+When you quit, everything is fine, but when you log back in, two
+xMarkerGameManagers are created. One is created in ISetupKI, which
+is run at the time the KI pages are loaded, and the second is created
+during xKI.OnServerInitComplete(). During the init of a CGZ game,
+the game type is known and correct, but as part of the init, the game
+type is cleared, setting the type to Unknown (-1). So when the
+second init happens, the game type is wrong.
+
+This can probably be worked around in xMarkerGameManager.py, in
+createCGZMakerGame() or thereabouts. Notably, user-created marker games
+survive the double-init.
+
+A possibly related bug is with the CGZ game that starts in the GZ itself.
+If you do not complete a link before capturing markers in the GZ, the number
+of dim markers doubles. Linking corrects it.
+
+
+The glyph music in night Minkata never stops.
+-----
+The music started when you touch a glyph should stop, I believe, but it never
+does. And it restarts when you change from day back to night, too.
+
+NOTE: this appears to be fixed with the PRP files distributed with MOULagain.
+
+
+Quab game owner handoff does not work.
+-----
+When the game owner leaves the age, the new owner's Python starts throwing
+exceptions like crazy. The quabs will no longer move.
+
+The bug is in ahnyQuabs.py. At no time does the quabKeyList get populated by
+any client other than the first game owner. When the transfer occurs, this
+list is empty. The exception is here:
+                loc = quabKeyList[index].getSceneObject().position()
+
+Currently MOSS intentionally declines to assign a new owner in the quab game,
+because the MOULagain client crashes when it becomes the new owner. This way
+the quab game will be no more broken but at least the client will still be
+working.

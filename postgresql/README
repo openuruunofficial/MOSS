@@ -1,0 +1,19 @@
+To build with the PostgreSQL extension module build infrastructure, just
+use:
+	make
+	make install
+
+Otherwise, instructions for building by hand can be found at:
+	http://www.postgresql.org/docs/8.2/interactive/xfunc-c.html#DFUNC
+
+If you are using 8.2 or earlier:
+	create or replace function uuid() returns text as 'moss_uuidgen',
+	'moss_uuidgen_text' language 'C' strict;
+
+If you are using >= 8.3 *and* want a "uuid" type, use:
+	create or replace function uuid() returns uuid as 'moss_uuidgen',
+	'moss_uuidgen' language 'C' strict;
+
+(The uuid() function is included in moss.sql so you don't need to install it
+yourself. But you do still need to copy the new module into the DB install
+and restart.)

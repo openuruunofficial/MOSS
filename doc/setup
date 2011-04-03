@@ -1,0 +1,207 @@
+Setup Instructions for MOSS
+===========================
+
+Compilation
+-----------
+Currently MOSS is coded only for unix/POSIX systems. It requires pthreads.
+
+Additional software requirements are:
+* PostgreSQL (development primarily was done on 8.3 but any 8.x should be good)
+  NOTE: you must be able to compile and install a custom DB module
+* libpqxx, the C++ programming interface for PostgreSQL
+* OpenSSL is technically optional but is required for proper connection
+  encryption. OpenSSL is also required if you wish to use email addresses
+  for usernames.
+* Zlib
+
+Development compilation: the configure file must be generated. Run the
+"bootstrap.sh" script to use the autotools to create it. If there is already
+a configure file present, you can skip this step.
+
+Run "configure" and then "make". You then probably want to use "make install"
+(for which you probably want to use the --prefix option to configure).
+
+To compile the PostgreSQL module, cd to the postgresql directory and follow
+the instructions in the README file. Install the resulting shared library file
+in your PostgreSQL install and restart if necessary.
+
+
+Configuration
+-------------
+There are two configuration files, one for "moss" and one for "moss_backend".
+The files "main.cfg" and "backend.cfg" list all possible configuration
+directives (commented out). Note that if you set vault_address and/or
+vault_port in main.cfg you have to set the corresponding bind_address and
+bind_port in backend.cfg.
+
+Note that directory paths are relative to the directory where the servers are
+*started*. The log_dir and game_data_dir directories must be writable by the
+server processes (the same log_dir can be used for both config files), and the
+auth_download_dir and file_download_dir do not need to be writable. If the
+pid_file is not writable it will simply not be written.
+
+A configuration file is required for each server process. By default "moss"
+looks for "./etc/moss.cfg" and "moss_backend" looks for
+"./etc/moss_backend.cfg", also relative to the directory where the servers
+are started. An alternate file may be specified with the -c option.
+
+
+File Server Data
+----------------
+To make the server easier and faster, the manifests are stored in a particular
+binary format. The file server directory, file_download_dir in the config file,
+should contain all the manifests. Each manifest is a file named with the
+manifest name (requested by the client) and an extension of .mbm.
+
+The data files themselves should be in directories populated as described in
+the manifests. If the client isn't going to have to download those files, you
+can leave them out.
+
+If you have .txt files but no .mbm files, the ManifestCreator will generate
+the full set of data server files. A set of .txt files for the MOUL client
+is in support/Manifests.zip. The ManifestCreator, support/ManifestCreator.exe,
+is a Windows program that will create the .mbm files from an existing
+MOUL/MOULagain install.
+
+Mac clients request the "macExternal" manifest instead of "External". There
+are added files in the Mac manifest, but if you don't have them to generate
+a proper manifest from, just copy or symlink External.mbm to macExternal.mbm.
+If you do have the files, generate the manifest using support/macExternal.txt.
+
+
+Auth Server Data
+----------------
+The auth server directory, auth_download_dir in the config file, must contain
+the Python and SDL as sent to the client. 
+
+Different sets of these files can be sent to holders of different accounts; a
+directory in the auth_download_dir must be present for every set of files to be
+sent and at a minimum there must be a directory named "default". The name of
+the directory to be used (on a per-account basis) is controlled by the "class"
+column in the "accounts" table in the DB. The "default" directory will be used
+if no class is configured or a class in the DB does not have a corresponding
+directory. 
+
+In each directory there must be a Python and SDL directory each containing the
+encrypted files. There must also be a key.bin file containing the 16-byte
+notthedroids key, and the manifest files. A special binary form of the manifest
+is required for those as well: Python.mbam and SDL.mbam. These can be generated
+from the Python and SDL directories present by make-mbam.pl, or on Windows
+using the ManifestCreator.
+
+
+Game Server Data
+----------------
+The game servers require an unencrypted copy of the SDL files. They must be
+located in the "SDL" subdirectory of the configured game_data_dir. Within the
+SDL directory there should be another directory named "common" containing the
+non-age-specific SDL files.
+
+For age SDL files, the server will first attempt to load all SDL files located
+in a subdirectory named after the age filename. If that directory is not
+present it will try to load just a single SDL file named after the age
+filename. Failing that it assumes there is no SDL file. Please note this means
+some Cyan ages' SDL files will need to be placed in subdirectories. This
+also means PhilRelto.sdl must be renamed to philRelto.sdl, ahnonay.sdl to
+Ahnonay.sdl, and ahnonaycathedral.sdl to AhnonayCathedral.sdl.
+
+So if the contents of the SDL directory is:
+  common/*.sdl
+  MyAge.sdl
+  MyAge/MyAge2.sdl
+and the MyAge age is loading, what will be read is common/*.sdl and
+MyAge/MyAge2.sdl and *not* MyAge.sdl.
+
+As another example, if the contents is:
+  common/*.sdl
+  MyAge.sdl
+  MyAge2/MyAge.sdl
+and the MyAge age is loading, what will be read is common/*.sdl and
+MyAge.sdl and *not* MyAge2/MyAge.sdl.
+
+The game servers also require an unencrypted copy of the .age files. They must
+be located in the "age" subdirectory of the configured game_data_dir.
+
+The age and SDL directory and files need not be writable by the user the
+servers run as but either game_data_dir or the "state" subdirectory must be
+(the ages' state is stored there).
+
+
+Database Setup
+--------------
+The database should be set up with a user (default is "moss") with sufficient
+permissions to modify tables, etc. Be sure to create the database with UTF8
+encoding. The database routines used by MOSS must be loaded into the DB from
+moss.sql, which expects the user to be named "moss". If you wish a different
+name you will have to edit moss.sql to match, and set up the correct user in
+backend.cfg.
+
+The routines need only be loaded once.
+
+To set AllAgeGlobalSDLNodes up, use global_sdl_manager. To aid setup, the
+support/set_to_moul.txt file can be used to set the global SDL state to a
+reasonable default (with no sparks) by running
+	global_sdl_manager game/SDL < set_to_moul.txt
+
+
+Encryption Setup
+----------------
+To use the Cyan-style modified Diffie-Hellman key agreement, use the
+--enable-encryption=cyan_dh configure option. Generate two keys, one for auth
+and one for game, using the make_cyan_dh program. The -s and -c options
+direct the program to write the data for the server and client to files,
+respectively, e.g.:
+	./make_cyan_dh -s auth_key.der -c auth_key.bin
+The server auth key will be output in the format required by MOSS (ASN.1 DER),
+and the client data will be output as 128 bytes of data in the order it
+belongs in the executable.
+
+To use RSA for key agreement, use the --enable-encryption=rsa configure option.
+Generate two keys, one for auth and one for game, using openssl, e.g.:
+	 openssl genrsa -outform PEM -out auth_key.pem 512
+Then use the rsa_convert program on each. The -s and -c options
+direct the program to write the data for the server and client to files,
+respectively, e.g.:
+	./rsa_convert -s auth_key.der -c auth_key.bin auth_key.pem
+The server auth key will be output in the format required by MOSS (ASN.1 DER),
+and the client data will be output as 128 bytes of data in the order it
+belongs in the executable.
+
+The keys are reloaded when the config is reloaded. If the keys are changed, the
+new keys will be used henceforth.  This is completely harmless for auth, but if
+there are any game servers running at the time, they will *not* get new keys,
+so expect problems if you do this while the server is in active use.
+
+
+Security Considerations
+-----------------------
+Never run something like MOSS as root.
+
+The backend config file contains a DB password so should not be
+world-readable, possibly not even group-readable, depending on the user/group
+used to run MOSS.
+
+All the key files described in "Encryption Setup" except those containing data
+that go in the client must always be kept confidential. A compromise of these
+keys not only compromises future connections, but all past connections using
+those keys. These files should not be readable by any user but the one used
+to run MOSS.
+
+No backend connections are currently protected with encryption. This includes
+the connection between the frontend servers (moss) and the backend server
+(moss_backend), and the connections between the backend server and the
+database.
+
+If the frontend and backend servers are not running on the same host and
+connecting over localhost (127.0.0.1), this connection should be protected by
+IPsec or an ssh tunnel until/unless server-server encryption is added.
+
+If a backend server is not running on the same host as the DB or not
+connecting over either a socket or localhost, the DB's connection encryption
+should be enabled. PostgreSQL provides for the connection to use SSL, which
+must be enabled in the server config (postgresql.conf). PostgreSQL clients
+automatically try SSL first, and fall back to non-SSL connections, so once SSL
+is enabled in the DB server the connections should be encrypted. See
+backend.cfg for the db_params configuration to use to require SSL connections.
+Don't forget you must generate a certificate for the DB server; see PostgreSQL
+documentation on how to do so.

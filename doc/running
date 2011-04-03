@@ -1,0 +1,44 @@
+moss_backend must be running before moss, or the latter will give up and
+exit.
+
+
+If you are on a system which may be renumbered, you can handle the renumbering
+a couple of ways, depending on your requirements.
+* If you are using a bind_address other than 0.0.0.0:
+  You must restart moss so that it will use the new bind_address.
+* If you have a DNS name and are listening on 0.0.0.0 (all addresses):
+  You can set external_address to the DNS name and always_resolve to true. This
+  causes moss to resolve external_address every time it is required. Thus the
+  server will track renumbers as fast as the DNS. Note, existing connections
+  will fail. It could take ~6 minutes for server state (i.e., running game
+  servers) to clear after a renumbering event. Attempting to log in after a
+  renumber while an old game server is running will result in a client hang
+  when it can't connect to the old IP address.
+* If you don't have a DNS name that changes when renumbered:
+-or-
+* If you don't want to do name resolution each gatekeeper request/game server:
+  Leave always_resolve set to false and update external_address when the
+  address changes. Reload the config file with kill -HUP. If you use a DNS name
+  in external_address, make sure the DNS record is updated first. It is
+  probably easier to set external_address to the IP address rather than a
+  hostname (no DNS update lag to worry about).
+  
+
+The SDL mechanism depends on all servers in the shard having synchronized
+time. Use NTP if you have more than one server. (You'll also need to NFS mount
+the game/state directory on all the servers so the age SDL is available to
+all.)
+
+
+Items cannot be placed on imagers by the DRC via the VaultManager we don't
+have. So they would have to be added directly in the DB via SQL queries.
+When this is done, the node containing the image/text must have the
+createageuuid and createagename values set correctly. They should be set to
+match those of the age the imager is in. If a node is being updated it is
+probably best to update the modify timestamp as well but this is not as
+critical as it was in UU.
+
+
+Changing the game_data_dir by reloading the config file will *not* reload
+the SDL/common files. If the game server was not enabled and then it is enabled
+the files will be loaded; it's just that once loaded they are never reloaded.

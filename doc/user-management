@@ -1,0 +1,45 @@
+To add a user, create a new row in the "accounts" table in the database.
+The fields are:
+
+name		This is the username, used when logging in. See IMPORTANT
+		notes below.
+email		This is an email address. It can be null, or whatever. It
+		is not used by the server or DB.
+hash		This is the password hash. See notes below on what to use.
+id		This is a UUID in classic format
+		('xxxxxxxx-xxxx-xxxx-xxx-xxxxxxxxxxxx'). You can just let
+		the DB create one for you.
+class		Use "default" unless you have set up something different.
+		See below.
+visitor		This controls whether the player is treated as a visitor.
+		There's little point to doing anything but 'f'.
+banned		Banned users cannot log in. This is false by default.
+
+
+IMPORTANT notes on usernames:
+- The username should be all lower case in this table. Downcase any user-
+  provided input, if you use a CGI script or something to add users.
+- There are two styles of password hash. Which is used is based on the format
+  of the username.
+- Usernames of the format "x@x.x" where x is one or more characters, called
+  here "email-address usernames", use an algorithm with SHA on the password
+  concatenated with the username. The strings are widestrings, and the last
+  character of both the password and username is replaced with nul. The
+  "compute_auth_hash" program will generate the correct hash for you.
+- Usernames not of the format "x@x.x" instead simply use a SHA-1 hash of the
+  password. (Not as a wide string.)
+- The email-address usernames authentication is more secure from network
+  attacks. If you disable encryption, this scheme definitely should be used.
+  If you don't disable encryption, it is not as critical. Some people may
+  feel it is safer not to have an email address as a username.
+- IMPORTANT: if you don't build MOSS with OpenSSL support, you must not use
+  email-address usernames.
+- WhoM does not work correctly with non-email-address usernames.
+
+On the "class":
+- See the "Auth Server Data" section in doc/setup for more details.
+- This field determines which python is sent to the client. If you want to
+  give a set of users different python then you can change their class to
+  something other than "default".
+- If this field is left unset, "default" is used, but it would be better to
+  set the value.

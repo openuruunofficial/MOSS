@@ -1,0 +1,192 @@
+a Ahnonay
+c
+m ahnyYeeshaPageStormVis 1
+m ahnyYeeshaPageClockVis 1
+w
+a BaronCityOffice
+c
+m tldnRopeBridgeFromBCOVis 1
+m bcoGZBeamVis 1
+w
+a Cleft
+c
+m clftYeeshaPage19Vis 1
+w
+a Descent
+c
+m dsntYeeshaPageMusicPlayerVis 1
+m dsntKILightFunc 2
+# m dsntCalendarSpark05 1
+w
+a EderDelin
+c
+m dlnYeeshaPage21Vis 1
+m dlnYeeshaPageBenchVis 1
+w
+a EderTsogal
+c
+m tsoYeeshaPageGrassVis 1
+w
+a Ercana
+c
+m ercaYeeshaPagePlantsVis 1
+m ercaYeeshaPageFiremarblesVis 1
+m ercaBackpackVis 1
+# m ercaCalendarSpark07 1
+w
+a Garrison
+c
+m grsnYeeshaPage02Vis 1
+# m grsnCalendarSpark01 1
+# m grsnCalendarSpark04 1
+w
+a Gira
+c
+m giraPithHelmetVis 1
+# m giraCalendarSpark03 1
+w
+a GreatTreePub
+c
+m grtpErcanaLinkingBookVis 1
+m grtpAhnonayLinkingBookVis 1
+m grtpDRCWatchersJournalVis 1
+m grtpWatchersJournalsVis 1
+m islmGZBeamVis 1
+m grtpBallHallDoorVis 1
+w
+a GreatZero
+c
+m grtzGZActive 1
+m grtzGZMarkerVis 1
+m grtzYeeshaPage12Vis 1
+m grtzGZImagerInbox GZImager
+m grtzGreatZeroState 1
+# m grtzCalendarSpark11 1
+w
+a Jalak
+c
+# m jlakCalendarSpark08 1
+w
+a Kadish
+c
+# m kdshHelmetVis 1
+# m kdshCalendarSpark02 1
+m kdshYeeshaPageButterfliesVis 1
+m kdshYeeshaPageTreeVis 1
+w
+a Kveer
+c
+m kverMystLinkingBookVis 1
+w
+a Minkata
+c
+m minkHikingBootsVis 1
+# m minkCalendarSpark06 1
+w
+a Myst
+c
+m mystYeeshaPageFireplaceVis 1
+# m mystCalendarSpark12 1
+w
+a Negilahn
+c
+m nglnYeeshaPageLushVis 1
+w
+a Neighborhood
+c
+m nb01AyhoheekAccountingFunc 1
+m nb01BulletinBoardVis 1
+m nb01CityLightsGreatZeroVis 1
+m nb01ClockFunc 1
+m nb01FireMarbles1Vis 1
+m nb01FireMarbles2Vis 1
+m nb01FountainWaterVis 1
+m nb01LinkBookEderVis 1
+m nb01LinkBookGZVis 1
+m nb01TelescopeVis 1
+m nb01YeeshaPage07Vis 1
+m nb01PlayerImagerVis 1
+m nb01BahroStonePedestalVis 1
+m nb01DRCImagerInbox CommunityImager
+m nb01Ayhoheek5Man1State 2
+m nb01CommunityAreaState 2
+m nb01PrivateRoomsState 2
+# the following are random but only for user-created hoods
+#m nb01ClockVis 1
+#m nb01GardenFungusVis 0
+#m nb01DestructionCracksVis 0
+#m nb01LanternsVis 0
+#m nb01LampOption01Vis 0
+#m nb01OldImager01Vis 0
+#m nb01OldImager02Vis 0
+#m nb01WaterfallTorchesVis 0
+#m nb01ResidenceAdditionsVis 0
+#m nb01StainedWindowOption 2
+### use a number larger than the number of glasses to get random
+m nb01StainedGlassEders 7
+m nb01StainedGlassGZ 4
+m nb01GZMarkerVis 1
+m nb01YeeshaPage07Enabled 1
+w
+a Neighborhood02
+c
+m nb02GuildShirt01 1
+m nb02GuildShirt02 1
+m nb02GuildShirt03 1
+m nb02GuildShirt04 1
+m nb02GuildShirt05 1
+w
+a Nexus
+c
+m nxusShowGZ 1
+m nxusShowPub 1
+m nxusShowKirel 1
+w
+a Teledahn
+c
+# m tldnCalendarSpark09 1
+m tldnTieDyeVis 1
+m tldnSlaveCaveSecretDoorVis 1
+w
+a city
+c
+m islmCityBlocker04Vis 0
+m islmCityBlocker05Vis 0
+m islmCityBlocker06Vis 0
+m islmCityBlocker07Vis 0
+m islmCityBlocker08Vis 0
+m islmCityBlocker09Vis 0
+m islmCityBlocker11Vis 0
+m islmCityBlocker12Vis 0
+m islmCityBlocker13Vis 0
+m islmCityBlocker14Vis 0
+#    VAR BOOL    islmKadishGalleryDoorsOn[1]    DEFAULT=0
+m islmTreasureBook01Vis 1
+#? m islmTreasureBook06Vis 0
+m islmTreasureBook08Vis 1
+m islmGreatZeroVis 1
+m islmFerryDoorFunc 1
+m islmGalleryThemePlayerVis 1
+m islmTokotahJournal11Vis 0
+m islmCityBlocker16State 2
+m islmMuseumDoorFunc 1
+m islmGZMarkerVis 1
+m islmGZBeamVis 1
+#? m islmTreasureBook01Enabled 0
+m islmTreasureBook06Enabled 1
+m islmTreasureBook08Enabled 1
+m islmNegilahnLinkingBookVis 1
+m islmNegilahnCreatureChartVis 1
+m islmPodMapVis 1
+m islmDerenoLinkingBookVis 1
+m islmPayiferenLinkingBookVis 1
+m islmTetsonotLinkingBookVis 1
+m islmYeeshaPageMoonsVis 1
+m islmMinkataLinkingBookVis 1
+m islmJalakLinkingBookVis 1
+w
+a philRelto
+c
+m philDRCVest 1
+# m philCalendarSpark10 1
+w
