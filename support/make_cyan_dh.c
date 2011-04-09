@@ -101,6 +101,7 @@ int main(int argc, char *argv[]) {
 	fprintf(stderr, usage, argv[0]);
 	return 1;
       }
+      break;
     case 'w':
       wireshark_fname = strdup(optarg);
       break;
