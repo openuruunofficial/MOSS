@@ -147,17 +147,20 @@ reasonable default (with no sparks) by running
 Encryption Setup
 ----------------
 To use the Cyan-style modified Diffie-Hellman key agreement, use the
---enable-encryption=cyan_dh configure option. Generate two keys, one for auth
-and one for game, using the make_cyan_dh program. The -s and -c options
-direct the program to write the data for the server and client to files,
-respectively, e.g.:
+--enable-encryption=cyan_dh configure option. Generate three keys for auth,
+game, and gatekeeper, using the make_cyan_dh program. The -s and -c/-C
+options direct the program to write the data for the server and client to
+files, respectively, e.g.:
 	./make_cyan_dh -s auth_key.der -c auth_key.bin
-The server auth key will be output in the format required by MOSS (ASN.1 DER),
-and the client data will be output as 128 bytes of data in the order it
-belongs in the executable.
+or
+	./make_cyan_dh -s auth_key.der -C pnNbAuthKey.hpp
+The server auth key will be output in the format required by MOSS (ASN.1 DER).
+With -c, the client data will be output as 128 bytes of data in the order it
+belongs in the executable. With -C, the client data will be output in the
+C++ format for compiling the client.
 
 To use RSA for key agreement, use the --enable-encryption=rsa configure option.
-Generate two keys, one for auth and one for game, using openssl, e.g.:
+Generate three keys for auth, game, and gatekeeper, using openssl, e.g.:
 	 openssl genrsa -outform PEM -out auth_key.pem 512
 Then use the rsa_convert program on each. The -s and -c options
 direct the program to write the data for the server and client to files,
@@ -165,7 +168,8 @@ respectively, e.g.:
 	./rsa_convert -s auth_key.der -c auth_key.bin auth_key.pem
 The server auth key will be output in the format required by MOSS (ASN.1 DER),
 and the client data will be output as 128 bytes of data in the order it
-belongs in the executable.
+belongs in the executable. There is no -C option because there is currently
+no client code for RSA key agreement.
 
 The keys are reloaded when the config is reloaded. If the keys are changed, the
 new keys will be used henceforth.  This is completely harmless for auth, but if

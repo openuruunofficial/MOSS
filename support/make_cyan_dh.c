@@ -66,29 +66,34 @@ IMPLEMENT_ASN1_FUNCTIONS_name(DH, CyanDHParams)
 
 static void print_bignum(BIGNUM *bn);
 static void print_private(DH *dh);
+static void print_as_C(FILE *file, unsigned char *buf);
 
 int main(int argc, char *argv[]) {
   char c;
   opterr = 0;
-  int text = 0, read = 0;
-  static char *usage = "Usage: %s [-h] [-t] [-g 2|4|5] [-s <server file>] [-c <client file>] [-r] [-w <wireshark file>]\n";
+  int text = 0, read = 1;
+  static char *usage = "Usage: %s [-h] [-t] [-g <generator>] [-f] [-s <server file>] [-C <code file>] [-c <client file>] [-w <wireshark file>]\n";
   static struct option options[] = {
     { "server", required_argument, 0, 's' },
     { "client", required_argument, 0, 'c' },
+    { "code", required_argument, 0, 'C' },
     { "generator", required_argument, 0, 'g' },
     { "wireshark", required_argument, 0, 'w' },
     { "text", no_argument, 0, 't' },
     { "readin", no_argument, 0, 'r' },
+    { "force", no_argument, 0, 'o' },
     { "help", no_argument, 0, 'h' },
     { 0, 0, 0, 0 }
   };
 
-  char *server_fname = NULL, *client_fname = NULL, *wireshark_fname = NULL;
-  int generator = 4, codes;
-  DH *dh;
-  FILE *serverf, *clientf, *wiresharkf;
+  char *server_fname = NULL, *client_fname = NULL, *source_fname = NULL,
+       *wireshark_fname = NULL;
+  int exitval = 0, generator = 4, codes;
+  DH *dh = NULL;
+  FILE *serverf = NULL, *clientf = NULL, *sourcef = NULL, *wiresharkf;
 
-  while ((c = getopt_long(argc, argv, "s:c:g:w:trh", options, NULL)) != -1) {
+  while ((c = getopt_long(argc, argv,
+			  "s:c:C:g:w:trfh", options, NULL)) != -1) {
     switch (c) {
     case 's':
       server_fname = strdup(optarg);
@@ -96,8 +101,11 @@ int main(int argc, char *argv[]) {
     case 'c':
       client_fname = strdup(optarg);
       break;
+    case 'C':
+      source_fname = strdup(optarg);
+      break;
     case 'g':
-      if ((sscanf(optarg, "%u", &generator) != 1)) {
+      if ((sscanf(optarg, "%d", &generator) != 1)) {
 	fprintf(stderr, usage, argv[0]);
 	return 1;
       }
@@ -109,19 +117,22 @@ int main(int argc, char *argv[]) {
       text = 1;
       break;
     case 'r':
-      read = 1;
+      /* no-op */
+      break;
+    case 'f':
+      read = 0;
       break;
     case 'h':
       fprintf(stdout, usage, argv[0]);
       fprintf(stdout,
 	      "\tGenerate Cyanish D-H constants\n"
-	      "\t-g specifies the generator; the default is 4. NOTE: OpenSSL\n"
-	      "\t\tconsiders 4 an \"unusable\" generator.\n"
+	      "\t-g specifies the generator in decimal; the default is 4.\n"
+	      "\t\tNOTE: OpenSSL considers 4 an \"unusable\" generator.\n"
 	      "\t\tFor MOULa client: auth=41 game=73 gatekeeper=4\n"
-	      "\tIf -s or -c is not provided, or -t or -r is provided, the\n"
-	      "\t\tdata is printed to stdout.\n"
-	      "\tIf -r or -w is provided, -s is required, and the server\n"
-	      "\t\tfile will be read instead of generating new data.\n");
+	      "\tIf -s is not provided, or -t is provided, the data\n"
+	      "\t\tis printed to stdout.\n"
+	      "\tIf the file provided by -s exists, the key is read from\n"
+	      "\t\tthat file. To force creation of a new key, use -f.\n");
       return 0;
     default:
       fprintf(stderr, usage, argv[0]);
@@ -132,18 +143,31 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, usage, argv[0]);
     return 1;
   }
-  if (read && !server_fname) {
-    fprintf(stderr, "%s: -r requires -s\n", argv[0]);
-    return 1;
+  if (!server_fname && (client_fname || source_fname)) {
+    printf("There is no value in keeping the public key "
+	   "and throwing away the private key.\n\n");
   }
-  if (wireshark_fname) {
-    read = 1;
-    if (!server_fname) {
-      fprintf(stderr, "%s: -w requires -s\n", argv[0]);
+  /* we have now processed the arguments */
+
+  /* see if we can read the private key file */
+  if (server_fname) {
+    if (read) {
+      serverf = fopen(server_fname, "r");
+    }
+    if (!serverf) {
+      /* make a new one */
+      read = 0;
+      serverf = fopen(server_fname, "w");
+    }
+    if (!serverf) {
+      fprintf(stderr, "Cannot open file %s: %s\n", server_fname,
+	      strerror(errno));
       return 1;
     }
   }
-  /* we have now processed the arguments */
+  else {
+    read = 0;
+  }
 
   if (!read) {
     /* generate data */
@@ -151,132 +175,161 @@ int main(int argc, char *argv[]) {
     if (!dh) {
       ERR_print_errors_fp(stderr);
       fprintf(stderr, "Could not create DH (out of memory)\n");
-      return 1;
+      exitval = 1;
+      goto done;
     }
     if (!DH_generate_parameters_ex(dh, 512, generator, NULL)) {
       ERR_print_errors_fp(stderr);
-      DH_free(dh);
-      return 1;
+      exitval = 1;
+      goto done;
     }
     if (!DH_check(dh, &codes)) {
       /* no idea why this might happen */
       fprintf(stderr, "Unable to check D-H parameters, please try again\n");
-      DH_free(dh);
-      return 1;
+      exitval = 1;
+      goto done;
     }
     if (codes & ~(DH_UNABLE_TO_CHECK_GENERATOR)) {
       fprintf(stderr, "Bad D-H parameters generated, please try again\n");
-      DH_free(dh);
-      return 1;
+      exitval = 1;
+      goto done;
     }
     if (!DH_generate_key(dh)) {
       ERR_print_errors_fp(stderr);
       fprintf(stderr, "Unable to generate D-H key\n");
-      DH_free(dh);
-      return 1;
+      exitval = 1;
+      goto done;
     }
     /* now, dh->p is the modulus, dh->priv_key is "b", and dh->pub_key is
        what the client has */
-    if (server_fname) {
-      serverf = fopen(server_fname, "w");
-      if (!serverf) {
-	fprintf(stderr, "Cannot open file %s: %s\n", server_fname,
-		strerror(errno));
-      }
-      else {
-	if (!i2d_CyanDHParams_fp(serverf, dh)) {
-	  ERR_print_errors_fp(stderr);
-	}
-	fclose(serverf);
+    if (serverf) {
+      if (!i2d_CyanDHParams_fp(serverf, dh)) {
+	ERR_print_errors_fp(stderr);
+	exitval = 1;
+	goto done;
       }
     }
-    if (!server_fname || text) {
-      print_private(dh);
+  }
+  else { /* !read */
+    dh = d2i_CyanDHParams_fp(serverf, NULL);
+    if (!dh) {
+      ERR_print_errors_fp(stderr);
+      fprintf(stderr, "Erorr reading key file %s\n", server_fname);
+      exitval = 1;
+      goto done;
     }
-    if (client_fname) {
-      int i;
-      unsigned char buf[128];
-      if (BN_num_bytes(dh->p) > 64) {
-	fprintf(stderr, "Bad modulus (too big)\n");
+
+    /* recompute public key if needed */
+    if (client_fname || source_fname || text) {
+      if (!DH_generate_key(dh)) {
+	ERR_print_errors_fp(stderr);
+	fprintf(stderr, "Unable to recompute D-H public key\n");
+	exitval = 1;
+	goto done;
       }
-      if (BN_num_bytes(dh->pub_key) > 64) {
-	fprintf(stderr, "Bad public key (too big)\n");
-      }
-      else {
+    }
+  }
+
+  if (!server_fname || text) {
+    print_private(dh);
+  }
+  if (client_fname || source_fname) {
+    int i;
+    unsigned char buf[128];
+    if (BN_num_bytes(dh->p) > 64) {
+      fprintf(stderr, "Bad modulus (too big)\n");
+    }
+    if (BN_num_bytes(dh->pub_key) > 64) {
+      fprintf(stderr, "Bad public key (too big)\n");
+    }
+    else {
+      if (client_fname) {
 	clientf = fopen(client_fname, "w");
 	if (!clientf) {
 	  fprintf(stderr, "Cannot open file %s: %s\n", client_fname,
 		  strerror(errno));
 	}
-	else {
+      }
+      if (source_fname) {
+	sourcef = fopen(source_fname, "w");
+	if (!sourcef) {
+	  fprintf(stderr, "Cannot open file %s: %s\n", source_fname,
+		  strerror(errno));
+	}
+      }
+      if (clientf || sourcef) {
+	BN_bn2bin(dh->p, buf);
+	BN_bn2bin(dh->pub_key, buf+64);
+	for (i = 0; i < 32; i++) {
+	  buf[i] ^= buf[63-i];
+	  buf[63-i] ^= buf[i];
+	  buf[i] ^= buf[63-i];
+	}
+	for (i = 0; i < 32; i++) {
+	  buf[64+i] ^= buf[127-i];
+	  buf[127-i] ^= buf[64+i];
+	  buf[64+i] ^= buf[127-i];
+	}
+	if (clientf) {
 	  /* write little-endian raw data */
-	  BN_bn2bin(dh->p, buf);
-	  BN_bn2bin(dh->pub_key, buf+64);
-	  for (i = 0; i < 32; i++) {
-	    buf[i] ^= buf[63-i];
-	    buf[63-i] ^= buf[i];
-	    buf[i] ^= buf[63-i];
-	  }
-	  for (i = 0; i < 32; i++) {
-	    buf[64+i] ^= buf[127-i];
-	    buf[127-i] ^= buf[64+i];
-	    buf[64+i] ^= buf[127-i];
-	  }
 	  if (fwrite(buf, 1, 128, clientf) != 128) {
 	    fprintf(stderr, "Error writing file %s: %s\n", client_fname,
 		    strerror(errno));
 	  }
 	  fclose(clientf);
 	}
-      }
-    }
-    if (!client_fname || text) {
-      printf("Public key:\n");
-      print_bignum(dh->pub_key);
-    }
-    DH_free(dh);
-  }
-  else { /* !read */
-    serverf = fopen(server_fname, "r");
-    if (!serverf) {
-      fprintf(stderr, "Cannot open file %s: %s\n", server_fname,
-	      strerror(errno));
-      return 1;
-    }
-    dh = d2i_CyanDHParams_fp(serverf, NULL);
-    if (!dh) {
-      ERR_print_errors_fp(stderr);
-    }
-    else if (wireshark_fname) {
-      wiresharkf = fopen(wireshark_fname, "w");
-      if (!wiresharkf) {
-	fprintf(stderr, "Cannot open file %s: %s\n", wireshark_fname,
-		strerror(errno));
-	fclose(serverf);
-	return 1;
-      }
-      {
-	int size = BN_num_bytes(dh->p) + BN_num_bytes(dh->priv_key);
-	unsigned char buf[size];
-
-	BN_bn2bin(dh->p, buf);
-	BN_bn2bin(dh->priv_key, buf+BN_num_bytes(dh->p));
-	if (fwrite(buf, 1, size, wiresharkf) != 128) {
-	  fprintf(stderr, "Error writing file %s: %s\n", wireshark_fname,
-		  strerror(errno));
+	if (sourcef) {
+	  /* generate C++ source */
+	  fprintf(sourcef,
+		  "/* This file was auto-generated by make_cyan_dh */\n");
+	  fprintf(sourcef, "\nstatic const unsigned kDhGValue = %d;\n",
+		  generator);
+	  fprintf(sourcef, "\nstatic const byte kDhNData[] = {");
+	  print_as_C(sourcef, buf);
+	  fprintf(sourcef, "\n};\nCOMPILER_ASSERT("
+		  "sizeof(kDhNData) == kNetDiffieHellmanKeyBits / 8);\n");
+	  fprintf(sourcef, "\nstatic const byte kDhXData[] = {");
+	  print_as_C(sourcef, buf+64);
+	  fprintf(sourcef, "\n};\nCOMPILER_ASSERT("
+		  "sizeof(kDhXData) == kNetDiffieHellmanKeyBits / 8);\n");
+	  fclose(sourcef);
 	}
+      }
+    }
+  }
+  if (!server_fname || text) {
+    printf("Public key:\n");
+    print_bignum(dh->pub_key);
+  }
+  if (wireshark_fname) {
+    wiresharkf = fopen(wireshark_fname, "w");
+    if (!wiresharkf) {
+      fprintf(stderr, "Cannot open file %s: %s\n", wireshark_fname,
+	      strerror(errno));
+    }
+    else {
+      int size = BN_num_bytes(dh->p) + BN_num_bytes(dh->priv_key);
+      unsigned char buf[size];
+
+      BN_bn2bin(dh->p, buf);
+      BN_bn2bin(dh->priv_key, buf+BN_num_bytes(dh->p));
+      if (fwrite(buf, 1, size, wiresharkf) != 128) {
+	fprintf(stderr, "Error writing file %s: %s\n", wireshark_fname,
+		strerror(errno));
       }
       fclose(wiresharkf);
     }
-    else {
-      print_private(dh);
-    }
-    if (dh) {
-      DH_free(dh);
-    }
+  }
+
+ done:
+  if (dh) {
+    DH_free(dh);
+  }
+  if (serverf) {
     fclose(serverf);
   }
-  return 0;
+
+  return exitval;
 }
 
 static void print_bignum(BIGNUM *bn) {
@@ -297,8 +350,27 @@ static void print_bignum(BIGNUM *bn) {
 static void print_private(DH *dh) {
   printf("Prime (modulus):\n");
   print_bignum(dh->p);
-  printf("Generator:\n");
+  printf("Generator (in hex):\n");
   print_bignum(dh->g);
   printf("Private key:\n");
   print_bignum(dh->priv_key);
+}
+
+static void print_as_C(FILE *file, unsigned char *buf) {
+  int i;
+
+  for (i = 0; i < 64; i++) {
+    if (i % 8 == 0) {
+      if (i == 0) {
+	fprintf(file, "\n\t");
+      }
+      else {
+	fprintf(file, ",\n\t");
+      }
+    }
+    else {
+      fprintf(file, ", ");
+    }
+    fprintf(file, "0x%02x", buf[i]);
+  }
 }
