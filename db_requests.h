@@ -1013,7 +1013,7 @@ public:
 	    break;
 	  case VaultNode::BLOB:
 	    {
-	      pqxx::binarystring::binarystring blob(F);
+	      pqxx::binarystring blob(F);
 	      size_t blob_len = read32(blob.data(), 0);
 	      if (blob_len+4 != blob.length()) {
 		// the data from the vault is wrong
@@ -2784,7 +2784,7 @@ public:
       m_result = NO_ERROR;
       return;
     }
-    pqxx::binarystring::binarystring blob(F);
+    pqxx::binarystring blob(F);
     m_buflen = read32(blob.data(), 0);
     if (m_buflen+4 != blob.length()) {
       // the data from the vault is wrong
@@ -2838,7 +2838,7 @@ public:
       m_result = NO_ERROR;
       return;
     }
-    pqxx::binarystring::binarystring blob(F);
+    pqxx::binarystring blob(F);
     m_buflen = read32(blob.data(), 0);
     if (m_buflen+4 != blob.length()) {
       // the data from the vault is wrong
