@@ -370,7 +370,7 @@ int main(int argc, char *argv[]) {
 	      }
 	      modified = new_node = false;
 	      current_node = NULL;
-	      printf("No node found for age %s\n", agename.c_str());
+	      printf("No node found for age %s (use 'c')\n", agename.c_str());
 	    }
 	  }
 	}
