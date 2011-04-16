@@ -22,6 +22,8 @@ dnl the variables $moss_postgres_CPPFLAGS and $moss_postgres_LDFLAGS
 dnl are set.
 dnl Then look for libpqxx if using PostgreSQL. The variables are analogous:
 dnl $moss_using_libpqxx, $moss_libpqxx_CPPFLAGS, $moss_libpqxx_LDFLAGS
+dnl Finally, set $moss_libpqxx_trans_esc depending on whether libpqxx has
+dnl per-transaction string/binary escape functions.
 
 AC_DEFUN([MOSS_POSTGRES], [
 
@@ -161,6 +163,17 @@ AC_DEFUN([MOSS_POSTGRES], [
   else
 	# certainly we aren't using libpqxx then
 	moss_using_libpqxx="no"
+  fi
+
+  # now figure out libpqxx quoting support
+  if test x$moss_using_libpqxx = xyes; then
+    AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <pqxx/pqxx>]])],
+	[AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pqxx/pqxx>]],
+		[[pqxx::connection C; pqxx::transaction<> T(C);
+		  T.esc_raw((unsigned char*)"data", 4);]])],
+		[moss_libpqxx_trans_esc="yes"],
+		[moss_libpqxx_trans_esc="no"])],
+	[moss_libpqxx_trans_esc="yes"])
   fi
 
   CPPFLAGS="$moss_cached_CPPFLAGS"

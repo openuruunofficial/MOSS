@@ -142,6 +142,10 @@ else
 		CPPFLAGS="$CPPFLAGS $moss_libpqxx_CPPFLAGS"
 		LDFLAGS="$LDFLAGS $moss_libpqxx_LDFLAGS"
 		AC_SUBST(db_libs,"-lpq -lpqxx")
+		if test "x$moss_libpqxx_trans_esc" = "xyes"; then
+			AC_DEFINE(PQXX_TRANS_ESC,1,
+				  [Define to 1 if libpqxx has transaction-based escape functions])
+		fi
 	else
 		AC_MSG_ERROR([libpqxx is required])
 	fi

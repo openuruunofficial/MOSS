@@ -146,6 +146,19 @@ public:
 };
 
 
+#ifdef USE_PQXX
+// Use a #define to reduce clutter due to different libpqxx versions having
+// different quoting functionality.
+#ifdef PQXX_TRANS_ESC
+#define ESC_STR(T, s) (T).esc(s)
+#define ESC_BIN(T, s, len) (T).esc_raw(s, len)
+#else
+#define ESC_STR(T, s) pqxx::sqlesc(s)
+#define ESC_BIN(T, s, len) pqxx::escape_binary(s, len)
+#endif
+#endif /* USE_PQXX */
+
+
 #define MIN_NODEVAL 100
 
 
@@ -220,7 +233,7 @@ public:
 
   void operator()(argument_type &T) {
     pqxx::result R(T.exec("SELECT hash,class,id,visitor,banned FROM accounts "
-			  "WHERE name=lower('" + pqxx::sqlesc(m_name) + "')"));
+			  "WHERE name=lower('" + ESC_STR(T, m_name) + "')"));
     if (R.size() == 0) {
       m_result.result_code = ERROR_ACCT_NOT_FOUND;
       return;
@@ -322,7 +335,7 @@ public:
 			 1, 1);
 
     pqxx::result R(T.exec("SELECT * FROM acctplayerinfo('" + 
-			  /*severe paranoia*/pqxx::sqlesc(uuid_str) + "')"));
+			  /*severe paranoia*/ESC_STR(T, uuid_str) + "')"));
     if (m_results.size() != 0) {
       // this should not happen
       throw std::runtime_error("We appear to have restarted what should be a "
@@ -371,7 +384,7 @@ public:
 			 1, 1);
     std::stringstream qstr;
     qstr << "SELECT v_name FROM acctplayerinfo('"
-	 << /*severe paranoia*/pqxx::sqlesc(uuid_str)
+	 << /*severe paranoia*/ESC_STR(T, uuid_str)
 	 << "') where v_ki = "
 	 << m_kinum;
 
@@ -414,10 +427,10 @@ public:
     uuid_bytes_to_string((u_char*)uuid_str, UUID_STR_LEN, m_uuid, UUID_RAW_LEN,
 			 1, 1);
     pqxx::result R(T.exec("UPDATE accounts SET hash='" +
-			  /*severe paranoia*/pqxx::sqlesc(m_hash) +
+			  /*severe paranoia*/ESC_STR(T, m_hash) +
 			  "' WHERE id='" + 
-			  /*severe paranoia*/pqxx::sqlesc(uuid_str) +
-			  "' and name='" + pqxx::sqlesc(m_name) + "'"));
+			  /*severe paranoia*/ESC_STR(T, uuid_str) +
+			  "' and name='" + ESC_STR(T, m_name) + "'"));
     if (R.affected_rows() == 0) {
       my_result = ERROR_ACCT_NOT_FOUND;
       return;
@@ -459,8 +472,8 @@ public:
     uuid_bytes_to_string((u_char*)uuid_str, UUID_STR_LEN, m_uuid, UUID_RAW_LEN,
 			 1, 1);
     pqxx::result R(T.exec("SELECT hash FROM accounts WHERE id='" + 
-			  /*severe paranoia*/pqxx::sqlesc(uuid_str) +
-			  "' and name='" + pqxx::sqlesc(m_name) + "'"));
+			  /*severe paranoia*/ESC_STR(T, uuid_str) +
+			  "' and name='" + ESC_STR(T, m_name) + "'"));
     if (R.size() == 0) {
       m_result = ERROR_ACCT_NOT_FOUND;
       return;
@@ -515,9 +528,9 @@ public:
 			 1, 1);
 
     pqxx::result R(T.exec("SELECT * FROM createplayer('" + 
-			  pqxx::sqlesc(m_name) + "', '" +
-			  pqxx::sqlesc(m_gender) + "', '" + 
-			  /*severe paranoia*/pqxx::sqlesc(uuid_str) + "')"));
+			  ESC_STR(T, m_name) + "', '" +
+			  ESC_STR(T, m_gender) + "', '" + 
+			  /*severe paranoia*/ESC_STR(T, uuid_str) + "')"));
     if (R.size() != 1) {
       my_player.kinum = ERROR_INTERNAL;
     }
@@ -585,8 +598,8 @@ public:
 			 1, 1);
 
     pqxx::result R(T.exec("SELECT * FROM acctplayerinfo('" +
-			  /*severe paranoia*/pqxx::sqlesc(uuid_str) +
-			  "') where v_name = '" + pqxx::sqlesc(m_name) + "'"));
+			  /*severe paranoia*/ESC_STR(T, uuid_str) +
+			  "') where v_name = '" + ESC_STR(T, m_name) + "'"));
     if (R.size() == 0) {
       m_result.kinum = ERROR_PLAYER_NOT_FOUND;
     }
@@ -691,7 +704,8 @@ typedef struct {
 } VaultFetchRefs_VaultRef;
 
 #ifdef USE_PQXX
-static bool string_output(std::ostream &ostr, const VaultNode *node,
+static bool string_output(pqxx::transaction_base &T,
+			  std::ostream &ostr, const VaultNode *node,
 			  VaultNode::datatype_t type, vault_bitfield_t bit) {
   switch (type) {
   case VaultNode::INT:
@@ -704,7 +718,7 @@ static bool string_output(std::ostream &ostr, const VaultNode *node,
       uuid_bytes_to_string((u_char*)uuid_str, UUID_STR_LEN,
 			   node->const_uuid_ptr(bit), UUID_RAW_LEN,
 			   1, 1);
-      ostr << "'" << /*severe paranoia*/pqxx::sqlesc(uuid_str) << "'";
+      ostr << "'" << /*severe paranoia*/ESC_STR(T, uuid_str) << "'";
     }
     break;
   case VaultNode::STRING:
@@ -712,14 +726,14 @@ static bool string_output(std::ostream &ostr, const VaultNode *node,
       const u_char *str_data = node->const_data_ptr(bit);
       u_int str_len = read32(str_data, 0);
       UruString str(str_data+4, str_len, false, true, false);
-      ostr << "'" << pqxx::sqlesc(str.c_str()) << "'";
+      ostr << "'" << ESC_STR(T, str.c_str()) << "'";
     }
     break;
   case VaultNode::BLOB:
     {
       const u_char *blob_data = node->const_data_ptr(bit);
       u_int blob_len = read32(blob_data, 0);
-      ostr << "E'" << pqxx::escape_binary(blob_data, blob_len+4) << "'";
+      ostr << "E'" << ESC_BIN(T, blob_data, blob_len+4) << "'";
     }
     break;
   default:
@@ -878,7 +892,7 @@ public:
 	    qstr << " and ";
 	  }
 	  qstr << " " << col->col_name << "=";
-	  if (!string_output(qstr, m_node, col->datatype, bit)) {
+	  if (!string_output(T, qstr, m_node, col->datatype, bit)) {
 	    log_err(m_log, "Unhandled vault node field type!\n");
 	  }
 	}
@@ -1106,7 +1120,7 @@ public:
 	    qstr << ",";
 	  }
 	  qstr << " " << col->col_name << "=";
-	  if (!string_output(qstr, m_node, col->datatype, bit)) {
+	  if (!string_output(T, qstr, m_node, col->datatype, bit)) {
 	    log_err(m_log, "Unhandled vault node field type!\n");
 	  }
 	}
@@ -1177,7 +1191,7 @@ public:
 
     std::stringstream cols, vals;
     cols << " (nodeid, createtime, modifytime, creatoracctid, creatorid";
-    vals << " (" << my_id << ", now(), now(), '" << pqxx::sqlesc(acct_str)
+    vals << " (" << my_id << ", now(), now(), '" << ESC_STR(T, acct_str)
 	 << "', " << m_creatorid;
     uint32_t bits = VaultNode::all_bits_for_type(ntype);
     // the DB at the moment has separate tables for each node type, so
@@ -1201,7 +1215,7 @@ public:
 	  col = VaultNode::get_spec(ntype, bit);
 	  cols << ", " << col->col_name;
 	  vals << ", ";
-	  if (!string_output(vals, m_node, col->datatype, bit)) {
+	  if (!string_output(T, vals, m_node, col->datatype, bit)) {
 	    log_err(m_log, "Unhandled vault node field type!\n");
 	  }
 	}
@@ -1370,17 +1384,17 @@ public:
     }
     std::stringstream qstr;
     qstr << "SELECT * FROM createage('"
-	 << pqxx::sqlesc(m_filename)
+	 << ESC_STR(T, m_filename)
 	 << "', '"
-	 << pqxx::sqlesc(m_instance)
+	 << ESC_STR(T, m_instance)
 	 << "', '"
-	 << pqxx::sqlesc(m_userdef)
+	 << ESC_STR(T, m_userdef)
 	 << "', '"
-	 << pqxx::sqlesc(m_display)
+	 << ESC_STR(T, m_display)
 	 << "', '"
-	 << /*severe paranoia*/pqxx::sqlesc(uuid1)
+	 << /*severe paranoia*/ESC_STR(T, uuid1)
 	 << "', '"
-	 << /*severe paranoia*/pqxx::sqlesc(uuid2)
+	 << /*severe paranoia*/ESC_STR(T, uuid2)
 	 << "')";
 
     pqxx::result R(T.exec(qstr));
@@ -1455,7 +1469,7 @@ public:
   void operator()(argument_type &T) {
     std::stringstream qstr;
     qstr << "SELECT * FROM getpublicagelist('"
-	 << pqxx::sqlesc(m_filename.c_str())
+	 << ESC_STR(T, m_filename.c_str())
 	 << "')";
     pqxx::result R(T.exec(qstr));
 
@@ -1626,7 +1640,7 @@ public:
   void operator()(argument_type &T) {
     std::stringstream qstr;
     qstr << "SELECT * FROM getscore(" << m_score_holder << ", '"
-	 << pqxx::sqlesc(m_score_name->c_str()) << "')";
+	 << ESC_STR(T, m_score_name->c_str()) << "')";
     pqxx::result R(T.exec(qstr));
 
     if (R.size() != 1) {
@@ -1700,7 +1714,7 @@ public:
   void operator()(argument_type &T) {
     std::stringstream qstr;
     qstr << "SELECT * FROM newscore(" << m_score_holder << ", '"
-	 << pqxx::sqlesc(m_score_name->c_str()) << "', "
+	 << ESC_STR(T, m_score_name->c_str()) << "', "
 	 << m_score_type << ", " << m_score_value << ")";
     pqxx::result R(T.exec(qstr));
 
@@ -1871,7 +1885,7 @@ public:
   void operator()(argument_type &T) {
     std::stringstream qstr;
     qstr << "SELECT * FROM createmarkergame(" << m_owner << ", "
-	 << m_type << ", '" << pqxx::sqlesc(m_game_name->c_str()) << "')";
+	 << m_type << ", '" << ESC_STR(T, m_game_name->c_str()) << "')";
     pqxx::result R(T.exec(qstr));
     if (R.size() != 1) {
       my_result = ERROR_INTERNAL;
@@ -1942,7 +1956,7 @@ public:
       return;
     }
     pqxx::result R(T.exec("SELECT * FROM getmarkergame('" +
-			  /*severe paranoia*/pqxx::sqlesc(uuid) + "')"));
+			  /*severe paranoia*/ESC_STR(T, uuid) + "')"));
     if (R.size() != 1) {
       m_result = ERROR_INTERNAL;
     }
@@ -1998,7 +2012,7 @@ public:
   void operator()(argument_type &T) {
     std::stringstream qstr;
     qstr << "SELECT * FROM renamemarkergame(" << m_game_id << ", '"
-	 << pqxx::sqlesc(m_game_name->c_str()) << "')";
+	 << ESC_STR(T, m_game_name->c_str()) << "')";
     pqxx::result R(T.exec(qstr));
     if (R.size() != 1) {
       my_result = ERROR_INTERNAL;
@@ -2094,8 +2108,8 @@ public:
   void operator()(argument_type &T) {
     std::stringstream qstr;
     qstr << "SELECT * FROM addmarker(" << m_game_id << ", " << m_x << ", "
-	 << m_y << ", " << m_z << ", '" << pqxx::sqlesc(m_name->c_str())
-	 << "', '" << pqxx::sqlesc(m_age->c_str()) << "')";
+	 << m_y << ", " << m_z << ", '" << ESC_STR(T, m_name->c_str())
+	 << "', '" << ESC_STR(T, m_age->c_str()) << "')";
     pqxx::result R(T.exec(qstr));
     if (R.size() != 1) {
       my_result = ERROR_INTERNAL;
@@ -2146,7 +2160,7 @@ public:
   void operator()(argument_type &T) {
     std::stringstream qstr;
     qstr << "SELECT * FROM renamemarker(" << m_game_id << ", "
-	 << m_marker << ", '" << pqxx::sqlesc(m_name->c_str()) << "')";
+	 << m_marker << ", '" << ESC_STR(T, m_name->c_str()) << "')";
     pqxx::result R(T.exec(qstr));
     if (R.size() != 1) {
       my_result = ERROR_INTERNAL;
@@ -2480,7 +2494,7 @@ public:
 			 m_uuid, UUID_RAW_LEN, 1, 1);
 
     pqxx::result R(T.exec("SELECT * FROM getagebyuuid('" +
-			  /*severe paranoia*/pqxx::sqlesc(uuid) + "')"));
+			  /*severe paranoia*/ESC_STR(T, uuid) + "')"));
     m_age_node = 0;
     if (R.size() != 1) {
       m_result = ERROR_INTERNAL;
@@ -2771,7 +2785,7 @@ public:
 
   void operator()(argument_type &T) {
     pqxx::result R(T.exec("SELECT * FROM getglobalsdlbyname('" +
-			  pqxx::sqlesc(m_filename.c_str()) + "')"));
+			  ESC_STR(T, m_filename.c_str()) + "')"));
     if (*m_outbuf) {
       // this should not happen
       throw std::runtime_error("We appear to have restarted what should be a "
@@ -2823,7 +2837,7 @@ public:
   void operator()(argument_type &T) {
     std::stringstream qstr;
     qstr << "SELECT * FROM getagesdl(" << m_age << ", '"
-	 << pqxx::sqlesc(m_filename.c_str()) + "')";
+	 << ESC_STR(T, m_filename.c_str()) + "')";
     pqxx::result R(T.exec(qstr));
 
     if (*m_outbuf) {
