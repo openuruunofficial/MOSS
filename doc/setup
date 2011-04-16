@@ -83,11 +83,11 @@ if no class is configured or a class in the DB does not have a corresponding
 directory. 
 
 In each directory there must be a Python and SDL directory each containing the
-encrypted files. There must also be a key.bin file containing the 16-byte
-notthedroids key, and the manifest files. A special binary form of the manifest
-is required for those as well: Python.mbam and SDL.mbam. These can be generated
-from the Python and SDL directories present by make-mbam.pl, or on Windows
-using the ManifestCreator.
+encrypted files. There must also be an encryption.key file containing the
+16-byte notthedroids key, and the manifest files. A special binary form of
+the manifest is required for those as well: Python.mbam and SDL.mbam. These
+can be generated from the Python and SDL directories present by make-mbam.pl,
+or on Windows using the ManifestCreator.
 
 
 Game Server Data

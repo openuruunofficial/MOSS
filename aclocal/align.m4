@@ -1,5 +1,5 @@
 # MOSS - A server for the Myst Online: Uru Live client/protocol
-# Copyright (C) 2008,2011  a'moaca'
+# Copyright (C) 2006,2008,2011  a'moaca'
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

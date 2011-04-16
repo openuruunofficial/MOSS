@@ -4054,7 +4054,7 @@ CREATE FUNCTION notifyage(v_nodeid numeric) RETURNS SETOF character
   goes to player vaults is in the ageinfo tree, which does duplicate certain
   information, but keeps the two logically separated.
   Side note: the SDL has to be in the ageinfo tree, which is *why* when the
-  "vault SDL" changes the server has to propagate to info to "age SDL" --
+  "vault SDL" changes the server has to propagate the info to "age SDL" --
   those in the age but not owners won't get updates to the vault SDL.
 */
 DECLARE
