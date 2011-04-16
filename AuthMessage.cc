@@ -119,11 +119,11 @@ NetworkMessage * AuthClientMessage::make_if_enough(const u_char *buf,
     break;
   case kCli2Auth_LogPythonTraceback:
   case kCli2Auth_LogStackDump:
-  case kCli2Auth_LogClientDebuggerConnect:
     in = (NetworkMessage*)AuthClientLogMessage::make_if_enough(buf,
 							       len,
 							       want_len);
     break;
+  case kCli2Auth_LogClientDebuggerConnect:
   case kCli2Auth_ClientRegisterRequest:
     if (len < 6) {
       *want_len = 6;

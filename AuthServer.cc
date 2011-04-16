@@ -919,6 +919,9 @@ Server::reason_t AuthServer::message_read(Connection *conn,
 	  }
 	  break;
 #endif
+	case kCli2Auth_LogClientDebuggerConnect:
+	  log_warn(m_log, "Got a DebuggerConnect from the client\n");
+	  break;
 	default:
 	  log_net(m_log, "Unknown message type %d\n", in->type());
 	}
