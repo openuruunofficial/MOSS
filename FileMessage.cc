@@ -117,7 +117,10 @@ FileServerMessage::FileServerMessage(FileTransaction *trans, int reply_type)
   write32(m_buf, 4, m_type);
   write32(m_buf, 8, trans->request_id());
   write32(m_buf, 12, (int)status);
-  write32(m_buf, 16, m_type == ManifestRequestTrans ? 1 : 4); // XXX unknown
+  // XXX unknown
+  write32(m_buf, 16, status == NO_ERROR
+			? (m_type == ManifestRequestTrans ? 1 : 4)
+			: 0);
   write32(m_buf, 20, status == NO_ERROR ? trans->file_len() : 0);
   write32(m_buf, 24, len);
   if (m_type == ManifestRequestTrans) {
@@ -156,14 +159,14 @@ u_int FileServerMessage::fill_iovecs(struct iovec *iov, u_int iov_ct,
   else if (m_transaction && m_transaction->status() == NO_ERROR) {
     start_at -= m_buflen;
     i += m_transaction->fill_iovecs(iov+i, iov_ct-i, &start_at);
+    if (m_type == ManifestRequestTrans && i < iov_ct && start_at < 2) {
+      iov[i].iov_base = (u_char*)&zero;
+      iov[i].iov_len = 2-start_at;
+      i++;
+    }
   }
   else {
     // shouldn't happen
-  }
-  if (m_type == ManifestRequestTrans && i < iov_ct && start_at < 2) {
-    iov[i].iov_base = (u_char*)&zero;
-    iov[i].iov_len = 2-start_at;
-    i++;
   }
   return i;
 }
@@ -184,6 +187,15 @@ u_int FileServerMessage::iovecs_written_bytes(u_int byte_ct, u_int start_at,
     byte_ct = m_transaction->iovecs_written_bytes(byte_ct,
 						  start_at - m_buflen,
 						  msg_done);
+    if (m_type == ManifestRequestTrans && *msg_done) {
+      if (byte_ct >= 2) {
+	byte_ct -= 2;
+      }
+      else {
+	*msg_done = false;
+	return 0;
+      }
+    }
   }
   else {
     if (start_at == m_buflen) {
@@ -191,15 +203,6 @@ u_int FileServerMessage::iovecs_written_bytes(u_int byte_ct, u_int start_at,
     }
     else {
       *msg_done = false;
-    }
-  }
-  if (m_type == ManifestRequestTrans && *msg_done) {
-    if (byte_ct >= 2) {
-      byte_ct -= 2;
-    }
-    else {
-      *msg_done = false;
-      return 0;
     }
   }
   return byte_ct;
@@ -227,20 +230,20 @@ u_int FileServerMessage::fill_buffer(u_char *buffer, size_t len,
   if (m_transaction && m_transaction->status() == NO_ERROR) {
     offset += m_transaction->fill_buffer(buffer+offset, len - offset,
 					 &start_at, msg_done);
-  }
-  if (m_type == ManifestRequestTrans && *msg_done) {
-    if (start_at < 2) {
-      if (len - offset >= 2-start_at) {
-	if (start_at < 1) {
-	  write16(buffer, offset, 0);
-	  offset += 2;
+    if (m_type == ManifestRequestTrans && *msg_done) {
+      if (start_at < 2) {
+	if (len - offset >= 2-start_at) {
+	  if (start_at < 1) {
+	    write16(buffer, offset, 0);
+	    offset += 2;
+	  }
+	  else {
+	    buffer[offset++] = 0;
+	  }
 	}
 	else {
-	  buffer[offset++] = 0;
+	  *msg_done = false;
 	}
-      }
-      else {
-	*msg_done = false;
       }
     }
   }
