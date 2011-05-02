@@ -171,9 +171,13 @@ int ConfigParser::read_config(const char *filename, bool complain) {
 #define ERROR_UNRECOGNIZED 0x4
 #define ERROR_UNKNOWN_TYPE 0x10 /* internal error */
 
+static bool is_whitespace(char c) {
+  return (c == ' ' || c == '\r' || c == '\n' || c == '\t');
+}
+
 int ConfigParser::check_line(char *linebuf, bool complain) {
   char *name = linebuf;
-  while (*name == ' ' || *name == '\r' || *name == '\t') {
+  while (is_whitespace(*name)) {
     name++;
   }
   if (*name == '\0' || *name == '#') {
@@ -185,17 +189,17 @@ int ConfigParser::check_line(char *linebuf, bool complain) {
     value++;
   }
   char *rtrim = value-1;
-  while (rtrim > name && (*rtrim == ' ' || *rtrim == '\t')) {
+  while (rtrim > name && is_whitespace(*rtrim)) {
     *rtrim-- = '\0';
   }
   bool end = (*value == '\0');
   if (!end) {
     *value++ = '\0'; // set string terminator for name
-    while (*value == ' ' || *value == '\t') {
+    while (is_whitespace(*value)) {
       value++;
     }
-    rtrim = value+strlen(value);
-    while (rtrim > value && (*rtrim == ' ' || *rtrim == '\t')) {
+    rtrim = value+strlen(value)-1;
+    while (rtrim > value && is_whitespace(*rtrim)) {
       *rtrim-- = '\0';
     }
   }

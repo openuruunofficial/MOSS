@@ -2306,10 +2306,13 @@ AgeDesc * AgeDesc::parse_file(std::ifstream &file) {
       delete age;
       throw parse_error(lineno, "error reading file");
     }
+    size_t len = line.size();
+    if (len > 0 && line[len-1] == '\r') {
+      line.resize(len-1);
+    }
     std::stringstream ss(line);
     std::getline(ss, token, '=');
-    if (ss.fail()) {
-      std::getline(ss, token);
+    if (ss.eof()) {
       if (token.size() > 0) {
 	delete age;
 	throw parse_error(lineno, "no = found");
@@ -2320,17 +2323,19 @@ AgeDesc * AgeDesc::parse_file(std::ifstream &file) {
       }
     }
     if (token == "DayLength") {
-      ss >> age->m_daylen;
-      if (ss.fail()) {
+      std::getline(ss, token);
+      std::stringstream num(token);
+      num >> age->m_daylen;
+      if (num.fail()) {
 	delete age;
-	throw parse_error(lineno, std::string("could not parse ") + ss.str()
-				  + " as a float");
+	throw parse_error(lineno, std::string("could not parse '") + token
+				  + "' as a float");
       }
     }
     else if (token == "Page") {
       std::string pagepart;
       std::getline(ss, pagepart, ',');
-      if (ss.fail()) {
+      if (ss.eof()) {
 	delete age;
 	throw parse_error(lineno, "Page listing incomplete (tuple expected)");
       }
@@ -2341,8 +2346,8 @@ AgeDesc * AgeDesc::parse_file(std::ifstream &file) {
       if (num.fail()) {
 	delete newpage;
 	delete age;
-	throw parse_error(lineno, std::string("could not parse ")
-				  + num.str() + " as a number");
+	throw parse_error(lineno, std::string("could not parse '")
+				  + num.str() + "' as a number");
       }
       std::getline(ss, pagepart, ',');
       if (ss.fail()) {
@@ -2355,37 +2360,40 @@ AgeDesc * AgeDesc::parse_file(std::ifstream &file) {
 	if (num2.fail()) {
 	  delete newpage;
 	  delete age;
-	  throw parse_error(lineno, std::string("could not parse ")
-				    + num2.str() + " as a number");
+	  throw parse_error(lineno, std::string("could not parse '")
+				    + num2.str() + "' as a number");
 	}
       }
       age->m_pages.push_back(newpage);
     }
     else {
+      std::string rhs;
+      std::getline(ss, rhs);
+      std::stringstream num(rhs);
       if (token == "StartDateTime") {
-	ss >> age->m_start_date_time;
+	num >> age->m_start_date_time;
       }
       else if (token == "MaxCapacity") {
-	ss >> age->m_capacity;
+	num >> age->m_capacity;
       }
       else if (token == "LingerTime") {
-	ss >> age->m_linger;
+	num >> age->m_linger;
       }
       else if (token == "SequencePrefix") {
-	ss >> age->m_seq_prefix;
+	num >> age->m_seq_prefix;
       }
       else if (token == "ReleaseVersion") {
-	ss >> age->m_release;
+	num >> age->m_release;
       }
       else {
 	delete age;
 	throw parse_error(lineno,
-			  std::string("unrecognized token ") + ss.str());
+			  std::string("unrecognized field '") + token + "'");
       }
-      if (ss.fail()) {
+      if (num.fail()) {
 	delete age;
-	throw parse_error(lineno, std::string("could not parse ") + ss.str()
-				  + " as a number");
+	throw parse_error(lineno, std::string("could not parse '") + rhs
+				  + "' as a number");
       }
     }
   }

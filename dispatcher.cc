@@ -185,7 +185,7 @@ public:
     m_disp_config.register_config("file_log_level", &file_log_level, "WARN");
     m_disp_config.register_config("game_log_level", &game_log_level, "NET");
     m_disp_config.register_config("gatekeeper_log_level", &gate_log_level,
-				  "WARN");
+				  "NET");
     m_disp_config.register_config("game_address", &game_addr_name, "");
     m_disp_config.register_config("auth_key_file", &auth_key_file,
 				  DEFAULT_AUTH_KEY);
@@ -221,6 +221,10 @@ public:
 
   bool parse_server_types();
   bool check_log_level() {
+    if (!log_level || log_level[0] == '\0') {
+      // empty (must be a reload)
+      return false;
+    }
     if (Logger::str_to_level(log_level) == Logger::NONE) {
       log_err(m_log, "Invalid log_level: %s\n", log_level ? log_level : "");
       return false;
@@ -228,6 +232,10 @@ public:
     return true;
   }
   bool check_auth_log_level() {
+    if (!auth_log_level || auth_log_level[0] == '\0') {
+      // empty (must be a reload)
+      return false;
+    }
     if (Logger::str_to_level(auth_log_level) == Logger::NONE) {
       log_err(m_log, "Invalid auth_log_level: %s\n",
 	      auth_log_level ? auth_log_level : "");
@@ -236,6 +244,10 @@ public:
     return true;
   }
   bool check_file_log_level() {
+    if (!file_log_level || file_log_level[0] == '\0') {
+      // empty (must be a reload)
+      return false;
+    }
     if (Logger::str_to_level(file_log_level) == Logger::NONE) {
       log_err(m_log, "Invalid file_log_level: %s\n",
 	      file_log_level ? file_log_level : "");
@@ -244,6 +256,10 @@ public:
     return true;
   }
   bool check_game_log_level() {
+    if (!game_log_level || game_log_level[0] == '\0') {
+      // empty (must be a reload)
+      return false;
+    }
     if (Logger::str_to_level(game_log_level) == Logger::NONE) {
       log_err(m_log, "Invalid game_log_level: %s\n",
 	      game_log_level ? game_log_level : "");
@@ -252,6 +268,10 @@ public:
     return true;
   }
   bool check_gate_log_level() {
+    if (!gate_log_level || gate_log_level[0] == '\0') {
+      // empty (must be a reload)
+      return false;
+    }
     if (Logger::str_to_level(gate_log_level) == Logger::NONE) {
       log_err(m_log, "Invalid gatekeeper_log_level: %s\n",
 	      gate_log_level ? gate_log_level : "");
