@@ -221,6 +221,16 @@ int main(int argc, char *argv[]) {
 
     /* recompute public key if needed */
     if (client_fname || source_fname || text) {
+      char *genstr;
+
+      genstr = BN_bn2dec(dh->g);
+      if (sscanf(genstr, "%d", &generator) != 1) {
+	fprintf(stderr, "Could not convert generator to decimal\n");
+	OPENSSL_free(genstr);
+	exitval = 1;
+	goto done;
+      }
+      OPENSSL_free(genstr);
       if (!DH_generate_key(dh)) {
 	ERR_print_errors_fp(stderr);
 	fprintf(stderr, "Unable to recompute D-H public key\n");
