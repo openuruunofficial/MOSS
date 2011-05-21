@@ -81,15 +81,16 @@ endif
 
 if USING_DH
 bin_PROGRAMS += make_cyan_dh
-make_cyan_dh_SOURCES = support/make_cyan_dh.c
-make_cyan_dh_LDADD = @ssl_libs@
 endif
 if USING_RSA
 bin_PROGRAMS += rsa_convert
-rsa_convert_SOURCES = support/rsa_convert.c
-rsa_convert_LDADD = @ssl_libs@
 endif
 bin_PROGRAMS += global_sdl_manager
+
+make_cyan_dh_SOURCES = support/make_cyan_dh.c
+make_cyan_dh_LDADD = @ssl_libs@
+rsa_convert_SOURCES = support/rsa_convert.c
+rsa_convert_LDADD = @ssl_libs@
 global_sdl_manager_SOURCES = support/global_sdl_manager.cc
 global_sdl_manager_LDADD = db_requests.o libmoss.la libmoss_serv.la \
 	-lz @db_libs@
@@ -105,6 +106,12 @@ EXTRA_DIST = bootstrap.sh main.cfg example_game_only.cfg backend.cfg \
 # XXX disable these on Windows
 EXTRA_PROGRAMS = ntd UruString_tester pcap_replay sdl_reader \
 	TimerQueue_tester age_reader
+if !USING_DH
+EXTRA_PROGRAMS += make_cyan_dh
+endif
+if !USING_RSA
+EXTRA_PROGRAMS += rsa_convert
+endif
 if HAVE_OPENSSL
 EXTRA_PROGRAMS += compute_auth_hash
 compute_auth_hash_SOURCES = support/compute_auth_hash.c
