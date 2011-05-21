@@ -16,4 +16,6 @@ If you are using >= 8.3 *and* want a "uuid" type, use:
 
 (The uuid() function is included in moss.sql so you don't need to install it
 yourself. But you do still need to copy the new module into the DB install
-and restart.)
+and restart. All MOSS code assumes you are using the text version provided in
+the moss.sql file, and not the "uuid" type, so don't change it unless you plan
+to change all UUID-handling SQL and code.)
