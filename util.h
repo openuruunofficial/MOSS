@@ -23,6 +23,8 @@
 //#include <stdio.h>
 //#include <string.h>
 //
+//#include <sys/stat.h>
+//
 //#include "machine_arch.h"
 
 #ifndef _UTIL_H_
@@ -134,7 +136,7 @@ int uuid_bytes_to_string(u_char *buf, u_int buflen,
 /*
  * Utilities.
  */
-int recursive_mkdir(const char *pathname, u_int mode);
+int recursive_mkdir(const char *pathname, mode_t mode);
 void do_random_seed();
 void get_random_data(u_char *buf, u_int buflen);
 /*

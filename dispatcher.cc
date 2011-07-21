@@ -144,8 +144,6 @@ static void usr2_handler(int sig) {
 #define DEFAULT_GAME_KEY "./etc/game_key.der"
 #define DEFAULT_GATE_KEY "./etc/gatekeeper_key.der"
 
-int recursive_mkdir(const char *pathname, mode_t mode);
-
 class DispatcherProcessor : public Server::SignalProcessor {
 public:
   Server::reason_t signalled(int *todo, Server *s);

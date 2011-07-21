@@ -160,7 +160,7 @@ int uuid_bytes_to_string(u_char *buf, u_int buflen,
   return 0;
 }
 
-int recursive_mkdir(const char *pathname, u_int mode) {
+int recursive_mkdir(const char *pathname, mode_t mode) {
   char path[PATH_MAX];
   u_int i = 0;
 
@@ -172,7 +172,7 @@ int recursive_mkdir(const char *pathname, u_int mode) {
 	/* go on */
       }
       else {
-	if (mkdir(path, (mode_t)mode) && (errno != EEXIST)) {
+	if (mkdir(path, mode) && (errno != EEXIST)) {
 	  return -1;
 	}
 	path[i] = PATH_SEPARATOR[0];
@@ -185,7 +185,7 @@ int recursive_mkdir(const char *pathname, u_int mode) {
   }
   /* now do last element */
   path[i] = '\0';
-  if (mkdir(path, (mode_t)mode) && (errno != EEXIST)) {
+  if (mkdir(path, mode) && (errno != EEXIST)) {
     return -1;
   }
   return 0;
