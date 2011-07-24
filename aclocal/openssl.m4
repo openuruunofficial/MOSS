@@ -68,7 +68,7 @@ AC_DEFUN([MOSS_OPENSSL], [
 	     AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <openssl/dh.h>]],
 			[[DH_free(NULL)]])],
 	      [AC_MSG_RESULT([no])],
-	      [LIBS="$LIBS -lpcap"
+	      [LIBS="$LIBS -lcrypto"
 	       AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <openssl/dh.h>]],
 			[[DH_free(NULL)]])],
 	         [AC_MSG_RESULT([yes])
