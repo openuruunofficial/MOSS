@@ -33,6 +33,7 @@
 #include <iostream>
 #include <fstream>
 
+#include "machine_arch.h"
 #include "exceptions.h"
 
 #include "ConfigParser.h"

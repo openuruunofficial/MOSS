@@ -31,6 +31,8 @@
 
 #include <stdexcept>
 
+#include "machine_arch.h"
+
 #include "Logger.h"
 
 static pthread_mutex_t creation_mutex;

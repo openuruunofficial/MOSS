@@ -165,7 +165,7 @@ else
 	CPPFLAGS="$CPPFLAGS $moss_openssl_CPPFLAGS"
 	LDFLAGS="$LDFLAGS $moss_openssl_LDFLAGS"
 	AC_DEFINE(HAVE_OPENSSL,1,[Define to 1 to use OpenSSL functionality])
-	AC_SUBST(ssl_libs,"-lssl")
+	AC_SUBST(ssl_libs,$moss_openssl_LIBS)
 fi
 
 MOSS_ZLIB

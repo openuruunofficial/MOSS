@@ -18,8 +18,8 @@
 dnl Find OpenSSL library
 
 dnl The variable $moss_using_openssl is set to "yes" or "no"; if "yes"
-dnl the variables $moss_openssl_CPPFLAGS and $moss_openssl_LDFLAGS
-dnl are set.
+dnl the variables $moss_openssl_CPPFLAGS, $moss_openssl_LDFLAGS, and
+dnl $moss_openssl_LIBS are set.
 
 AC_DEFUN([MOSS_OPENSSL], [
 
@@ -57,10 +57,23 @@ AC_DEFUN([MOSS_OPENSSL], [
 	     if test x$moss_openssl_path = x; then
 		moss_openssl_CPPFLAGS=""
 		moss_openssl_LDFLAGS=""
+		moss_openssl_LIBS="-lssl"
 	     else
 		moss_openssl_CPPFLAGS="-I$moss_openssl_path/include"
 		moss_openssl_LDFLAGS="-L$moss_openssl_path/lib"
-	     fi],
+		moss_openssl_LIBS="-lssl"
+	     fi
+	     dnl on Mac OS X some symbols are in libcrypto instead
+	     AC_MSG_CHECKING([whether -lcrypto is required])
+	     AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <openssl/dh.h>]],
+			[[DH_free(NULL)]])],
+	      [AC_MSG_RESULT([no])],
+	      [LIBS="$LIBS -lpcap"
+	       AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <openssl/dh.h>]],
+			[[DH_free(NULL)]])],
+	         [AC_MSG_RESULT([yes])
+		  moss_openssl_LIBS="$moss_openssl_LIBS -lcrypto"],
+		 [AC_MSG_ERROR([[I don't know where to find DH routines]])])])],
 	    [AC_MSG_RESULT([no])
 		moss_using_openssl="no"])],
 	  [AC_MSG_RESULT([no])
