@@ -800,7 +800,7 @@ Server::reason_t AuthServer::message_read(Connection *conn,
 	  }
 	  break;
 	case kCli2Auth_AcctSetPlayerRequest:
-#ifndef DISALLOW_NO_DOWNLOAD
+#ifdef DISALLOW_NO_DOWNLOAD
 	  if (m_state < DOWNLOAD) {
 	    // the user did not download anything
 	    log_info(m_log, "Client did not initiate \"secure download\"\n");
@@ -810,7 +810,7 @@ Server::reason_t AuthServer::message_read(Connection *conn,
 	  }
 #endif
 	  if (m_state != DOWNLOAD && m_state != IN_STARTUP
-#ifdef DISALLOW_NO_DOWNLOAD
+#ifndef DISALLOW_NO_DOWNLOAD
 	      && m_state != LOGIN_DONE
 #endif
 	      // following is the "log out" -> StartUp transition
