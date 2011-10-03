@@ -160,35 +160,29 @@ int uuid_bytes_to_string(u_char *buf, u_int buflen,
   return 0;
 }
 
-int recursive_mkdir(const char *pathname, mode_t mode) {
-  char path[PATH_MAX];
-  u_int i = 0;
+int recursive_mkdir( const char *pathname, mode_t mode ) {
+    char path[PATH_MAX];
+    char *p = NULL;
+    size_t len;
 
-  while (pathname[i]) {
-    if (pathname[i] == PATH_SEPARATOR[0]) {
-      path[i] = '\0';
-
-      if (i == 0) {
-	/* go on */
-      }
-      else {
-	if (mkdir(path, mode) && (errno != EEXIST)) {
-	  return -1;
-	}
-	path[i] = PATH_SEPARATOR[0];
-      }
+    snprintf( path, sizeof(path), "%s", pathname );
+    len = strlen(path);
+    if ( path[len - 1] == PATH_SEPARATOR[0] )  {
+        path[len - 1] = 0;
     }
-    else {
-      path[i] = pathname[i];
+    for ( p = path + 1; *p; p++ )  {
+        if ( *p == PATH_SEPARATOR[0] ) {
+            *p = 0;
+            if (mkdir(path, mode) && (errno != EEXIST)) {
+                return -1;
+            }
+            *p = PATH_SEPARATOR[0];
+        }
     }
-    i++;
-  }
-  /* now do last element */
-  path[i] = '\0';
-  if (mkdir(path, mode) && (errno != EEXIST)) {
-    return -1;
-  }
-  return 0;
+    if (mkdir(path, mode) && (errno != EEXIST)) {
+        return -1;
+    }
+    return 0;
 }
 
 void do_random_seed() {
