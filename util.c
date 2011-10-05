@@ -160,29 +160,31 @@ int uuid_bytes_to_string(u_char *buf, u_int buflen,
   return 0;
 }
 
+/* FIXME: this thumps on mkdir() if the path is not normalzed */
 int recursive_mkdir( const char *pathname, mode_t mode ) {
-    char path[PATH_MAX];
-    char *p = NULL;
-    size_t len;
+  char path[PATH_MAX];
+  char *p = NULL;
+  size_t len;
 
-    snprintf( path, sizeof(path), "%s", pathname );
-    len = strlen(path);
-    if ( path[len - 1] == PATH_SEPARATOR[0] )  {
-        path[len - 1] = 0;
-    }
-    for ( p = path + 1; *p; p++ )  {
-        if ( *p == PATH_SEPARATOR[0] ) {
-            *p = 0;
-            if (mkdir(path, mode) && (errno != EEXIST)) {
-                return -1;
-            }
-            *p = PATH_SEPARATOR[0];
-        }
-    }
-    if (mkdir(path, mode) && (errno != EEXIST)) {
+  snprintf(path, sizeof(path), "%s", pathname);
+  len = strlen(path);
+  if (path[len-1] == PATH_SEPARATOR[0])  {
+      path[len-1] = 0;
+  }
+
+  for (p=path+1; *p; p++)  {
+    if (*p == PATH_SEPARATOR[0]) {
+      *p = '\0';
+      if (mkdir(path, mode) && (errno != EEXIST)) {
         return -1;
+      }
+    *p = PATH_SEPARATOR[0];
     }
-    return 0;
+  }
+  if (mkdir(path, mode) && (errno != EEXIST)) {
+    return -1;
+  }
+  return 0;
 }
 
 void do_random_seed() {
