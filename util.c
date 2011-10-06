@@ -160,10 +160,10 @@ int uuid_bytes_to_string(u_char *buf, u_int buflen,
   return 0;
 }
 
-/* FIXME: this thumps on mkdir() if the path is not normalzed */
 int recursive_mkdir( const char *pathname, mode_t mode ) {
   char path[PATH_MAX];
   char *p = NULL;
+  char *d;
   size_t len;
 
   snprintf(path, sizeof(path), "%s", pathname);
@@ -172,15 +172,19 @@ int recursive_mkdir( const char *pathname, mode_t mode ) {
       path[len-1] = 0;
   }
 
-  for (p=path+1; *p; p++)  {
+  for (p=path+1, d=p; *p; p++, d++)  {
     if (*p == PATH_SEPARATOR[0]) {
-      *p = '\0';
+      while (*p && (*(p+1) == PATH_SEPARATOR[0])) p++;
+      *d = '\0';
       if (mkdir(path, mode) && (errno != EEXIST)) {
         return -1;
       }
-    *p = PATH_SEPARATOR[0];
+    *d = PATH_SEPARATOR[0];
+    } else {
+      *d = *p;
     }
   }
+  *d = '\0';
   if (mkdir(path, mode) && (errno != EEXIST)) {
     return -1;
   }
