@@ -26,6 +26,8 @@ $outname =~ s/.txt/.mbam/;
 open(OUTF, ">$outname");
 while (<INF>) {
     chomp;
+    next if /^\s*#/;            # skip comments
+    next unless /\S/;           # and blank lines
     $fname = $_;
     $fname =~ s/\\/\//g;
     ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
