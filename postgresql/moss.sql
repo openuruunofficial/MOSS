@@ -2888,7 +2888,7 @@ BEGIN
   if numrows = 0 then
     return 2;
   end if;
-  select count(*) into numrows from markergame where uuid_1 = v_gameid;
+  select count(*) into numrows from markergame inner join markertemplates on markergame.uuid_1 = markertemplates.uuid where markertemplates.game_id = v_gameid;
   /* do not delete the game if the vault refers to it */
   if numrows = 0 then
     delete from markertemplates where game_id = v_gameid;
