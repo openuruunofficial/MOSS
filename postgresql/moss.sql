@@ -2413,7 +2413,7 @@ BEGIN
       return;
     end if;
 
-    select count(name) from player where name = v_reqname into v_playercount;
+    select count(name) from player where lower(name) = lower(v_reqname) into v_playercount;
     if v_playercount > 0 then /* error - player name already used */
       v_ki := 12; /* set KI number to ERROR_PLAYER_EXISTS */
       return;
