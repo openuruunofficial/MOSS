@@ -35,6 +35,9 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h> /* for fork(), getpid() */
 #endif
+#ifdef HAVE_ASSERT_H
+#include <assert.h>
+#endif
 
 #include <stdarg.h>
 #include <pthread.h>
@@ -293,6 +296,7 @@ void Server::Connection::set_rc4_key(const u_char *session_key) {
 }
 
 Server::reason_t Server::Connection::setup_rc4_key(const u_char *inbuf,
+						   size_t inbuflen,
 						   const void *keydata,
 						   int fd, Logger *log) {
 #ifdef USING_RSA
@@ -302,6 +306,10 @@ Server::reason_t Server::Connection::setup_rc4_key(const u_char *inbuf,
   }
   RSA *rsa = (RSA *)keydata;
 
+  if (inbuflen != 64) {
+    log_err(log, "Got %u bytes of RSA nonce, expected 64\n", inbuflen);
+    return INTERNAL_ERROR;
+  }
   u_char dkey[64];
   u_char swapped[64];
   for (int blargh = 0; blargh < 64; blargh++) {
@@ -331,11 +339,14 @@ Server::reason_t Server::Connection::setup_rc4_key(const u_char *inbuf,
 
   u_char dkey[64];
   u_char swapped[64];
-  for (int blargh = 0; blargh < 64; blargh++) {
-    swapped[blargh] = inbuf[63-blargh];
+#ifdef DEBUG_ENABLE
+  assert(inbuflen <= 64);
+#endif
+  for (int blargh = 0; blargh < inbuflen; blargh++) {
+    swapped[blargh] = inbuf[inbuflen-1-blargh];
   }
   BIGNUM *clientkey = BN_new();
-  BN_bin2bn(swapped, 64, clientkey);
+  BN_bin2bn(swapped, inbuflen, clientkey);
   if (!DH_compute_key(dkey, clientkey, dh)) {
     log_warn(log, "Failed to compute key\n");
     return INTERNAL_ERROR;

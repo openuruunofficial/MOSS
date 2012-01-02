@@ -292,7 +292,8 @@ Server::reason_t AuthServer::message_read(Connection *conn,
 
       log_msgs(m_log, "Setting up session key (fd %d)\n", conn->fd());
 #if defined(USING_RSA) || defined(USING_DH)
-      reason_t key_okay = conn->setup_rc4_key(in->buffer()+1, m_keydata,
+      reason_t key_okay = conn->setup_rc4_key(in->buffer()+1,
+					      in->message_len()-2, m_keydata,
 					      conn->fd(), m_log);
       if (key_okay != NO_SHUTDOWN) {
 	// problem is already logged

@@ -71,7 +71,7 @@ bool NegotiationMessage::check_useable() const {
   if ((m_type == TYPE_FILE && m_buflen >= 38)
       || ((m_type == TYPE_AUTH || m_type == TYPE_GAME
 	   || m_type == TYPE_GATEKEEPER) && m_buflen >= 30)
-      || (m_type == TYPE_NONCE && m_buflen >= 65)) {
+      || (m_type == TYPE_NONCE && m_buflen >= 2)) {
     return true;
   }
   return false;
