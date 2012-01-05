@@ -1405,8 +1405,8 @@ Server::reason_t GameServer::handle_negotiation(GameConnection *c,
 
       log_msgs(log, "Setting up session key (fd %d)\n", c->fd());
 #if defined(USING_RSA) || defined(USING_DH)
-      reason_t key_okay = c->setup_rc4_key(in->buffer()+1, keydata,
-					   c->fd(), log);
+      reason_t key_okay = c->setup_rc4_key(in->buffer()+1, in->message_len()-2,
+					   keydata, c->fd(), log);
       if (key_okay != NO_SHUTDOWN) {
 	// problem is already logged
 	return key_okay;

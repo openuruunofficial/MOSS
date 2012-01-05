@@ -397,8 +397,8 @@ public:
     // set up the keys
     // can throw std::bad_alloc
     void set_rc4_key(const u_char *session_key);
-    reason_t setup_rc4_key(const u_char *nego_buf, const void *keydata,
-			   int fd, Logger *log);
+    reason_t setup_rc4_key(const u_char *nego_buf, size_t nego_buf_len,
+			   const void *keydata, int fd, Logger *log);
     // when converting a connection to encrypted, call this
     // XXX can throw std::bad_alloc
     void set_encrypted() {
