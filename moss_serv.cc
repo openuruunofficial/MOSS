@@ -343,15 +343,21 @@ Server::reason_t Server::Connection::setup_rc4_key(const u_char *inbuf,
     swapped[blargh] = inbuf[inbuflen-1-blargh];
   }
   BIGNUM *clientkey = BN_new();
-  BN_bin2bn(swapped, inbuflen, clientkey);
-  if (!DH_compute_key(dkey, clientkey, dh)) {
+  BN_bin2bn(swapped, 64, clientkey);
+  int keysize = DH_compute_key(dkey, clientkey, dh);
+  // usually keysize == 64, but when its most significant bytes are zero
+  // DH_compute_key apparently omits them
+  if (keysize < 0) {
     log_warn(log, "Failed to compute key\n");
     return INTERNAL_ERROR;
   }
-  for (int blargh = 0; blargh < 32; blargh++) {
-    u_char keep = dkey[63-blargh];
-    dkey[63-blargh] = dkey[blargh];
+  for (int blargh = 0; blargh < keysize/2; blargh++) {
+    u_char keep = dkey[keysize-1-blargh];
+    dkey[keysize-1-blargh] = dkey[blargh];
     dkey[blargh] = keep;
+  }
+  for (int i = keysize; i < 7; i++) { // unlikely to ever happen
+    dkey[i] = 0;
   }
   const u_char *finalkey = dkey;
 #else
