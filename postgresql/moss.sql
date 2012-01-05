@@ -3624,9 +3624,8 @@ v_pubages record;
 
 BEGIN
   for v_pubages in
-    select nodeid, int32_1, uuid_1, string64_2, string64_3, string64_4, text_1 from ageinfo where string64_2 = v_filename and int32_2 = 1 order by nodeid DESC limit 50 loop
+    select nodeid, modifytime, int32_1, uuid_1, string64_2, string64_3, string64_4, text_1 from ageinfo where string64_2 = v_filename and int32_2 = 1 order by modifytime DESC limit 50 loop
      /* MOUL returns max 50 records, so we limit 50 here to duplicate that */
-     /* XXX this algorithm has to be MRU if there are > 50 hoods */
       v_uuid := v_pubages.uuid_1;
       v_instance_name := v_pubages.string64_3;
       v_user_defined := v_pubages.string64_4;
