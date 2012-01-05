@@ -343,7 +343,7 @@ Server::reason_t Server::Connection::setup_rc4_key(const u_char *inbuf,
     swapped[blargh] = inbuf[inbuflen-1-blargh];
   }
   BIGNUM *clientkey = BN_new();
-  BN_bin2bn(swapped, 64, clientkey);
+  BN_bin2bn(swapped, inbuflen, clientkey);
   int keysize = DH_compute_key(dkey, clientkey, dh);
   // usually keysize == 64, but when its most significant bytes are zero
   // DH_compute_key apparently omits them
