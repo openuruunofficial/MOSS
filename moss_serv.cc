@@ -299,6 +299,10 @@ Server::reason_t Server::Connection::setup_rc4_key(const u_char *inbuf,
 						   size_t inbuflen,
 						   const void *keydata,
 						   int fd, Logger *log) {
+#ifdef DEBUG_ENABLE
+  assert(inbuflen <= 64);
+#endif
+
 #ifdef USING_RSA
   if (!keydata) {
     log_err(log, "No server key data provided!\n");
@@ -306,16 +310,12 @@ Server::reason_t Server::Connection::setup_rc4_key(const u_char *inbuf,
   }
   RSA *rsa = (RSA *)keydata;
 
-  if (inbuflen != 64) {
-    log_err(log, "Got %u bytes of RSA nonce, expected 64\n", inbuflen);
-    return INTERNAL_ERROR;
-  }
   u_char dkey[64];
   u_char swapped[64];
-  for (int blargh = 0; blargh < 64; blargh++) {
-    swapped[blargh] = inbuf[63-blargh];
+  for (int blargh = 0; blargh < inbuflen; blargh++) {
+    swapped[blargh] = inbuf[inbuflen-1-blargh];
   }
-  int dec_res = RSA_private_decrypt(64, swapped, dkey, rsa, RSA_NO_PADDING);
+  int dec_res = RSA_private_decrypt(inbuflen, swapped, dkey, rsa, RSA_NO_PADDING);
   if (dec_res != 64) {
     log_warn(log, "Decryption produced only %d bytes?!\n", dec_res);
   }
@@ -339,9 +339,6 @@ Server::reason_t Server::Connection::setup_rc4_key(const u_char *inbuf,
 
   u_char dkey[64];
   u_char swapped[64];
-#ifdef DEBUG_ENABLE
-  assert(inbuflen <= 64);
-#endif
   for (int blargh = 0; blargh < inbuflen; blargh++) {
     swapped[blargh] = inbuf[inbuflen-1-blargh];
   }
