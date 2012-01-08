@@ -312,7 +312,7 @@ Server::reason_t Server::Connection::setup_rc4_key(const u_char *inbuf,
 
   u_char dkey[64];
   u_char swapped[64];
-  for (int blargh = 0; blargh < inbuflen; blargh++) {
+  for (u_int blargh = 0; blargh < inbuflen; blargh++) {
     swapped[blargh] = inbuf[inbuflen-1-blargh];
   }
   int dec_res = RSA_private_decrypt(inbuflen, swapped, dkey, rsa, RSA_NO_PADDING);
@@ -339,7 +339,7 @@ Server::reason_t Server::Connection::setup_rc4_key(const u_char *inbuf,
 
   u_char dkey[64];
   u_char swapped[64];
-  for (int blargh = 0; blargh < inbuflen; blargh++) {
+  for (u_int blargh = 0; blargh < inbuflen; blargh++) {
     swapped[blargh] = inbuf[inbuflen-1-blargh];
   }
   BIGNUM *clientkey = BN_new();
