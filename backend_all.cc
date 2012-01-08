@@ -1372,18 +1372,30 @@ Server::reason_t BackendServer::handle_vault(Connection *c,
     {
       VaultNodeSend_BackendMessage *msg = (VaultNodeSend_BackendMessage *)in;
 
+      HashKey key(in->get_id1(), in->get_id2());
+      if (m_hash_table.find(key) == m_hash_table.end()) {
+        log_err(m_log, "VAULT_SENDNODE for connection ID %08x,%08x but "
+                "I don't know about that connection!\n",
+                in->get_id1(), in->get_id2());
+        // Client does not receive a result from a VaultSendNode message,
+        // so we can safely ignore this request we cannot fulfill.
+        break;
+      }
+      ConnectionEntity *entity = m_hash_table[key];
       status_code_t send_result = ERROR_INTERNAL;
       uint32_t inboxid = 0;
 #ifdef USE_PQXX
       try {
 	try {
 	  my->C->perform(VaultSendNode_Request(msg->player(), msg->nodeid(),
-					       send_result, inboxid));
+	                                       entity->kinum(), send_result,
+					       inboxid));
 	}
 	catch(const pqxx::in_doubt_error &e) {
 	  log_warn(m_log, "in_doubt in VaultSendNode; retrying\n");
 	  my->C->perform(VaultSendNode_Request(msg->player(), msg->nodeid(),
-					       send_result, inboxid));
+	                                       entity->kinum(), send_result,
+					       inboxid));
 	  if (send_result == ERROR_INVALID_DATA) {
 	    send_result = NO_ERROR;
 	  }
@@ -1402,8 +1414,9 @@ Server::reason_t BackendServer::handle_vault(Connection *c,
 	log_warn(m_log, "SQL error in VaultSendNode: %s\n", e.what());
       }
 #endif
-      log_msgs(m_log, "VAULT_SENDNODE %u to %u%s\n", msg->nodeid(),
-	       msg->player(), send_result == NO_ERROR ? "" : " failed");
+      log_msgs(m_log, "VAULT_SENDNODE %u sent from %u to %u%s\n",
+               msg->nodeid(), entity->kinum(), msg->player(),
+               send_result == NO_ERROR ? "" : " failed");
 #ifndef STANDALONE
       if (send_result == NO_ERROR) {
 	// we only need to send the update to the affected player

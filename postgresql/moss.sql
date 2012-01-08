@@ -4272,16 +4272,17 @@ $$
 ALTER FUNCTION public.renamemarkergame(v_gameid numeric, v_newname character) OWNER TO moss;
 
 --
--- Name: sendnode(numeric, numeric); Type: FUNCTION; Schema: public; Owner: moss
+-- Name: sendnode(numeric, numeric, numeric); Type: FUNCTION; Schema: public; Owner: moss
 --
 
-CREATE FUNCTION sendnode(v_nodeid numeric, v_player numeric, OUT v_result integer, OUT v_inbox numeric) RETURNS record
+CREATE FUNCTION sendnode(v_player numeric, v_nodeid numeric, v_sender numeric, OUT v_result integer, OUT v_inbox numeric) RETURNS record
     AS $$
 
 /*
    This is for kCli2Auth_VaultSendNode 0x23
-   v_nodeid = node to send
    v_player = player node of recipient (KI number)
+   v_nodeid = node to send
+   v_sender = player node of sender (KI number)
 
    Returns same result codes as addnode():
    0 = success
@@ -4296,7 +4297,7 @@ CREATE FUNCTION sendnode(v_nodeid numeric, v_player numeric, OUT v_result intege
 begin
 
 select child from noderefs nr inner join folder f on f.nodeid = nr.child where nr.parent = v_player and f.type = 1 limit 1 into v_inbox;
-select addnode(v_inbox, v_nodeid, v_player) into v_result;
+select addnode(v_inbox, v_nodeid, v_sender) into v_result;
 return;
 
 END;
@@ -4304,7 +4305,7 @@ $$
     LANGUAGE plpgsql;
 
 
-ALTER FUNCTION public.sendnode(v_nodeid numeric, v_player numeric, OUT v_result integer, OUT v_inbox numeric) OWNER TO moss;
+ALTER FUNCTION public.sendnode(v_player numeric, v_nodeid numeric, v_sender numeric, OUT v_result integer, OUT v_inbox numeric) OWNER TO moss;
 
 --
 -- Name: setmarkerto(numeric, numeric, numeric, numeric); Type: FUNCTION; Schema: public; Owner: moss

@@ -1530,23 +1530,25 @@ protected:
 
 class VaultSendNode_Request : public pqxx::transactor<> {
 public:
-  VaultSendNode_Request(kinum_t player, uint32_t nodeid,
+  VaultSendNode_Request(kinum_t player, uint32_t nodeid, kinum_t sender,
 			status_code_t &result, uint32_t &inboxid)
     : pqxx::transactor<>("VaultSendNode_Request"),
-      m_player(player), m_node(nodeid), m_result(result), m_inbox(inboxid),
-      my_result(result), my_inbox(0)
+      m_player(player), m_node(nodeid), m_sender(sender), m_result(result),
+      m_inbox(inboxid), my_result(result), my_inbox(0)
   { }
 
   VaultSendNode_Request(const VaultSendNode_Request &other) 
     : pqxx::transactor<>("VaultSendNode_Request"),
       m_player(other.m_player), m_node(other.m_node),
-      m_result(other.m_result), m_inbox(other.m_inbox),
-      my_result(other.my_result), my_inbox(other.my_inbox)
+      m_sender(other.m_sender), m_result(other.m_result),
+      m_inbox(other.m_inbox), my_result(other.my_result),
+      my_inbox(other.my_inbox)
   { }
 
   void operator()(argument_type &T) {
     std::stringstream qstr;
-    qstr << "SELECT * FROM sendnode(" << m_node << ", " << m_player << ")";
+    qstr << "SELECT * FROM sendnode(" << m_player << ", " << m_node << ", "
+    << m_sender << ")";
 
     pqxx::result R(T.exec(qstr));
     if (R.size() != 1) {
@@ -1576,6 +1578,7 @@ public:
 protected:
   uint32_t m_player;
   uint32_t m_node;
+  uint32_t m_sender;
   status_code_t &m_result;
   uint32_t &m_inbox;
   status_code_t my_result;
