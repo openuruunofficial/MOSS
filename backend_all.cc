@@ -225,8 +225,8 @@ Server::reason_t BackendServer::handle_auth(Connection *c,
 	entity->set_uuid(login_result.uuid);
 
 	// now we need the avatar messages
-#ifdef USE_PQXX
 	std::list<AuthAcctLogin_PlayerQuery_Player> plist;
+#ifdef USE_PQXX
 	try {
 	  my->C->perform(AuthAcctLogin_PlayerQuery(login_result.uuid, plist));
 	}
@@ -240,6 +240,7 @@ Server::reason_t BackendServer::handle_auth(Connection *c,
 		   e.what());
 	  login_result.result_code = ERROR_INTERNAL;
 	}
+#endif /* USE_PQXX */
 	if (login_result.result_code == NO_ERROR && plist.size() > 0) {
 	  buf = new u_char[plist.size()*(((64+12)*2)+18)];
 	  for (std::list<AuthAcctLogin_PlayerQuery_Player>::iterator
@@ -283,7 +284,6 @@ Server::reason_t BackendServer::handle_auth(Connection *c,
 						     msg->reqid(),
 						     login_result.result_code);
       }
-#endif /* USE_PQXX */
 #else /* ! USE_POSTGRES */
       // totally faked up
       reply = new AuthAcctLogin_FromBackendMessage(in->get_id1(),

@@ -655,7 +655,10 @@ void * serv_main(void *serv) {
     ret = gettimeofday(&now, NULL);
     if (timeval_lessthan(next, now)) {
       log_info(log, "I am alive!\n");
-      next.tv_sec += (3600*24);
+      // log only once if the server was asleep (suspended) for > 1 day
+      do {
+	next.tv_sec += (3600*24);
+      } while (timeval_lessthan(next, now));
     }
     timeout = next;
     // get accepted sockets not yet completed

@@ -921,7 +921,7 @@ public:
     for (u_int i = 0; i < R.size(); i++) {
       uint32_t val;
       R[i][0].to(val);
-      m_found[i] = val;
+      m_found.push_back(val);
     }
   }
 

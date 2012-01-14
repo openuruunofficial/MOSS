@@ -1975,6 +1975,13 @@ void SDLState::update_from(SDLState *newer, bool vault, bool global,
 	}
 	continue;
       }
+      // if it's age load, and to has a timestamp, that means there is
+      // a timestamp stored in the vault, so use it (note: we already
+      // continued above if from does not have a timestamp)
+      if (age_load && (to->m_flags & Timestamp)
+	  && timeval_lessthan(from->m_ts, to->m_ts)) {
+	continue;
+      }
     }
     if (!vault) {
       // if it's not coming from the vault, we can swipe the data in
