@@ -808,7 +808,7 @@ Server::reason_t GameServer::backend_message(Connection *vault,
       // see if the message is actually meant for this age
       UruString agename(msg->sdl_buf()+2, msg->sdl_len()-2,
 			true, false, false);
-      if (agename != m_filename) {
+      if (strcasecmp(agename.c_str(), m_filename)) {
 	// the backend should not forward SDL updates except to the correct
 	// game server, but the shortcut of forwarding them to the player's
 	// current game server is still okay for STANDALONE
