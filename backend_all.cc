@@ -1426,7 +1426,7 @@ Server::reason_t BackendServer::handle_vault(Connection *c,
 	  write16(added_buf, 0, kAuth2Cli_VaultNodeAdded);
 	  write32(added_buf, 2, inboxid);
 	  write32(added_buf, 6, msg->nodeid());
-	  write32(added_buf, 10, msg->player());
+	  write32(added_buf, 10, entity->kinum());
 	  VaultPassthrough_BackendMessage *reply
 	    = new VaultPassthrough_BackendMessage(in->get_id1(), in->get_id2(),
 						  added_buf, 14, false, true);
