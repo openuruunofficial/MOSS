@@ -78,6 +78,7 @@ public:
   // the situation is fatal, return a different, appropriate reason.
   typedef enum {
     NO_SHUTDOWN = 0,
+    FORGET_THIS_CONNECTION, // NOT fatal, used when connections change threads
     CLIENT_CLOSE,
     CLIENT_TIMEOUT,
     SERVER_SHUTDOWN,
@@ -336,13 +337,15 @@ public:
 
     Buffer *m_readbuf;
     u_int m_read_fill;
+    u_int m_read_off;
     Buffer *m_bigbuf;
     u_char *m_writebuf;
     u_int m_write_fill;
 
     Connection(int fd=-1, MessageQueue *writeq=NULL)
       : m_interval(0),
-	m_read_fill(0), m_bigbuf(NULL), m_writebuf(NULL), m_write_fill(0),
+	m_read_fill(0), m_read_off(0), m_bigbuf(NULL),
+	m_writebuf(NULL), m_write_fill(0),
 	m_fd(fd), m_in_connect(false), m_in_shutdown(false),
 	m_is_encrypted(false), m_c2s_rc4(NULL), m_s2c_rc4(NULL) {
 

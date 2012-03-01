@@ -690,6 +690,16 @@ Server::reason_t GameServer::message_read(Connection *conn,
     }
     return NO_SHUTDOWN;
   }
+  else if (in->type() == kCli2Game_JoinAgeRequest) {
+    log_net(m_log, "Unexpected late JoinAgeRequest on fd %d\n", conn->fd());
+    // this deletes the message
+    return handle_join_request(conn, in);
+  }
+  else if (in->type() == kCli2Game_PingRequest) {
+    conn->enqueue(in);
+    // we do not want to delete the message, so skip the end
+    return NO_SHUTDOWN;
+  }
   else {
     log_net(m_log, "Unhandled client message type %d on fd %d\n",
 	    in->type(), conn->fd());
@@ -1145,6 +1155,23 @@ Server::reason_t GameServer::conn_shutdown(Connection *conn,
     kinum_t kinum = gconn->kinum();
     std::list<Connection*>::iterator c_iter;
 
+    // if there's no KI number set, they did not get through join, and
+    // we should not do most of the following
+    if (!kinum) {
+      for (c_iter = m_conns.begin(); c_iter != m_conns.end(); c_iter++) {
+	if (conn == *c_iter) {
+	  m_conns.erase(c_iter);
+	  break;
+	}
+      }
+      delete conn;
+
+      // if the last client just left us, set up the shutdown timer
+      maybe_start_shutdown_timer();
+
+      return NO_SHUTDOWN;
+    }
+
     // change GroupOwner
     if (kinum == m_group_owner) {
       for (c_iter = m_conns.begin(); c_iter != m_conns.end(); c_iter++) {
@@ -1183,6 +1210,8 @@ Server::reason_t GameServer::conn_shutdown(Connection *conn,
 	delete msg;
       }
 
+      // XXX this should be before send_to_all so it doesn't send to the
+      // departing player, so why did I do it in this order?
       mgr->player_left(kinum, this);
     }
     m_game_state.player_left(kinum);
@@ -1426,10 +1455,11 @@ Server::reason_t GameServer::handle_negotiation(GameConnection *c,
   /* from here is normal processing (after start-up) */
 
   else if (c->state() != NONCE_DONE) {
+    // this is very bad -- we have two threads using the connection
     log_err(log,
 	    "Game connection on %d must be passed to game server by now!\n",
 	    c->fd());
-    return INTERNAL_ERROR;
+    return FORGET_THIS_CONNECTION; // maybe this can spare us a server crash
   }
   else if (in->type() == kCli2Game_JoinAgeRequest) {
     if (!in->check_useable()) {
@@ -1518,16 +1548,101 @@ void GameServer::get_queued_connections() {
   m_fake_signal = 0;
   pthread_mutex_unlock(&m_client_queue_mutex);
 
-  struct timeval timeout;
-  gettimeofday(&timeout, NULL);
-  timeout.tv_sec += KEEPALIVE_INTERVAL;
-
   std::deque<std::pair<GameConnection*,NetworkMessage*> >::iterator iter;
   for (iter = newconns->begin(); iter != newconns->end(); iter++) {
     GameConnection *conn = iter->first;
-    m_conns.push_back(conn);
-    GameJoinRequest *join = (GameJoinRequest *)(iter->second);
+    // it should not be possible to have the same connection passed over
+    // more than once but be certain not to put it in m_conns more than once
+    std::list<Connection*>::iterator c_iter;
+    for (c_iter = m_conns.begin(); c_iter != m_conns.end(); c_iter++) {
+      if (*c_iter == (Connection*)conn) {
+	break;
+      }
+    }
+    if (c_iter == m_conns.end()) {
+      // normal code path
+      m_conns.push_back(conn);
+    }
+
+    Server::reason_t result;
+    NetworkMessage *msg = iter->second;
+    if (msg->type() == kCli2Game_JoinAgeRequest) {
+      // this is the normal, expected code path
+      result = handle_join_request(conn, msg);
+
+      if (result == NO_SHUTDOWN) {
+	// If the client sent some other message after the JoinAgeRequest
+	// then it could be read already. It will sit in the buffer unused
+	// until the client sends something else, unless we handle it here.
+	// If we don't handle it and this message is something the client is
+	// waiting for, we'll have a deadlock (until the client is timed out).
+	if (conn->m_read_off < conn->m_read_fill) {
+	  // the following is based on code in the select loop, but the
+	  // JoinAgeRequest is so short, conn->m_bigbuf must be NULL
+	  if (conn->m_bigbuf) {
+	    // this really, really shouldn't happen; who knows what's going
+	    // on, so toss this back to the select loop to deal with properly
+	  }
+	  else {
+	    log_debug(m_log, "Handling data sent by the client on fd %d "
+		      "before receiving the JoinAgeReply\n", conn->fd());
+	    Buffer *cbuf = conn->m_readbuf;
+	    int to_read;
+	    do {
+	      try {
+		msg = conn->make_if_enough(cbuf->buffer()+conn->m_read_off,
+					   conn->m_read_fill-conn->m_read_off,
+					   &to_read, false);
+	      }
+	      catch (const overlong_message &e) {
+		log_net(m_log, "Message on %d too long: claimed %d bytes\n",
+			conn->fd(), e.claimed_len());
+		m_log->dump_contents(Logger::LOG_DEBUG,
+				     cbuf->buffer()+conn->m_read_off,
+				     conn->m_read_fill-conn->m_read_off);
+		msg = NULL;
+		result = PROTOCOL_ERROR;
+	      }
+	      if (msg) {
+		conn->m_read_off += msg->message_len();
+		result = message_read(conn, msg);
+	      }
+	    } while (msg && (conn->m_read_fill > conn->m_read_off)
+		     && result == NO_SHUTDOWN);
+	  }
+	}
+	else {
+	  // normal code path (client sent only a join)
+	  conn->m_read_off = conn->m_read_fill = 0; // not strictly necessary
+	}
+      }
+    }
+    else {
+      // it is not possible for the message to be anything but JoinAgeRequest
+      // (any other message does not contain the server ID and should be
+      // handled/rejected by the dispatcher)
+      log_err(m_log, "A message other than JoinAgeRequest on %d was "
+	      "dispatched during age join (type %d)\n",
+	      conn->fd(), msg->type());
+      delete msg;
+      result = INTERNAL_ERROR;
+    }
+    if (result != NO_SHUTDOWN) {
+      // set up to drop the connection
+      conn->set_in_shutdown(true);
+      conn->set_state(KILL_AFTER_QUEUE_EMPTY);
+    }
+  }
+  delete newconns;
+}
+#endif /* !FORK_GAME_TOO */
+
+Server::reason_t GameServer::handle_join_request(Connection *conn,
+						 NetworkMessage *in) {
+    GameConnection *gconn = (GameConnection*)conn;
+    GameJoinRequest *join = (GameJoinRequest*)in;
     status_code_t result = NO_ERROR;
+    bool already_joined = true;
     UruString player_name("I am so lonely");
 #ifndef STANDALONE
     // we need to check if this client is allowed to connect
@@ -1539,9 +1654,12 @@ void GameServer::get_queued_connections() {
 	if (jt->m_kinum == join->kinum()
 	    && !memcmp(jt->m_acct_uuid, join->uuid(), UUID_RAW_LEN)) {
 	  // it's a match
-	  jt->cancel();
-	  if (m_joiners > 0) {
-	    m_joiners--;
+	  if (!jt->cancelled()) {
+	    already_joined = false;
+	    jt->cancel();
+	    if (m_joiners > 0) {
+	      m_joiners--;
+	    }
 	  }
 	  // copy name
 	  player_name = jt->m_name;
@@ -1552,6 +1670,13 @@ void GameServer::get_queued_connections() {
     if (t_iter == m_timers->end()) {
       // client not registered
       result = ERROR_AUTH_TOO_OLD;
+      if (join->kinum() == gconn->kinum() && gconn->state() >= JOINED) {
+	// Apparently, the client joined a while ago and the join timer has
+	// expired. This is bad behavior but they can join as themselves
+	// again if they like... if the KI number does not match, no go.
+	result = NO_ERROR;
+	already_joined = true;
+      }
     }
 #endif
 
@@ -1585,14 +1710,17 @@ void GameServer::get_queued_connections() {
     }
 
     if (result != NO_ERROR) {
-      // set up to drop the connection
-      conn->set_in_shutdown(true);
-      conn->set_state(KILL_AFTER_QUEUE_EMPTY);
+      // set up to drop the connection -- once we send an error result
+      // the client sits at the black screen, so might as well boot it
+      delete in;
+      return PROTOCOL_ERROR;
+    }
+    if (already_joined) {
+      // we already did all the following stuff, so skip it
     }
     else {
-      conn->set_state(JOINED);
-      conn->set_logger(m_log);
-      GameConnection *gconn = (GameConnection *)conn;
+      gconn->set_state(JOINED);
+      gconn->set_logger(m_log);
       gconn->set_kinum(join->kinum());
       gconn->set_uuid(join->uuid());
       gconn->player_name() = player_name;
@@ -1617,6 +1745,10 @@ void GameServer::get_queued_connections() {
       // 3*KEEPALIVE_INTERVAL instead of if nothing arrives in exactly
       // 4*KEEPALIVE_INTERVAL. To do that, we have to check every
       // KEEPALIVE_INTERVAL.
+      struct timeval timeout;
+      gettimeofday(&timeout, NULL);
+      timeout.tv_sec += KEEPALIVE_INTERVAL;
+
       conn->m_interval = KEEPALIVE_INTERVAL;
       conn->m_timeout = timeout;
 
@@ -1634,8 +1766,8 @@ void GameServer::get_queued_connections() {
 #ifndef STANDALONE
       // tell other players this one is here
       PlNetMsgMembersMsg *member_msg = new PlNetMsgMembersMsg(join->kinum());
-      member_msg->addMember(join->kinum(), &(conn->player_name()),
-			    &(conn->plKey()), true);
+      member_msg->addMember(join->kinum(), &(gconn->player_name()),
+			    &(gconn->plKey()), true);
       member_msg->finalize(false);
       std::list<Connection*>::iterator c_iter;
       for (c_iter = m_conns.begin(); c_iter != m_conns.end(); c_iter++) {
@@ -1657,11 +1789,10 @@ void GameServer::get_queued_connections() {
 #endif
     }
     // and now we can get rid of the JoinRequest
-    delete join;
-  }
-  delete newconns;
+    delete in;
+
+    return NO_SHUTDOWN;
 }
-#endif /* !FORK_GAME_TOO */
 
 #ifdef FORK_GAME_TOO
 NetworkMessage * 

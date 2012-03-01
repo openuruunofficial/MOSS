@@ -1843,6 +1843,9 @@ Server::reason_t Dispatcher::message_read(Connection *conn,
       }
       else {
 #ifdef FORK_GAME_TOO
+	// NOTE: if the client sends anything after the JoinAge and it
+	// arrives in the same read as the JoinAge, we have to also forward
+	// the remaining data that is in the read buffer.
 	who->forward_conn(gconn);
 	// take the connection out of the dispatcher's list; the
 	// DispatcherConnection will delete it when handoff is complete
@@ -1861,8 +1864,9 @@ Server::reason_t Dispatcher::message_read(Connection *conn,
 	m_conns.remove(conn);
 	// and wake up the game server
 	dp->m_thread_manager->signal_thread(who, SIGUSR2);
-	// since we don't want to delete the message yet, return now
-	return result;
+	// since we don't want to delete the message yet, and we need to
+	// tell the select loop that a different thread owns conn, return now
+	return Server::FORGET_THIS_CONNECTION;
 #endif
       }
     }

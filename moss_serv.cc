@@ -345,6 +345,7 @@ Server::reason_t Server::Connection::setup_rc4_key(const u_char *inbuf,
   BIGNUM *clientkey = BN_new();
   BN_bin2bn(swapped, inbuflen, clientkey);
   int keysize = DH_compute_key(dkey, clientkey, dh);
+  BN_free(clientkey);
   // usually keysize == 64, but when its most significant bytes are zero
   // DH_compute_key apparently omits them
   if (keysize < 0) {
@@ -405,6 +406,8 @@ const char * Server::reason_to_string(Server::reason_t why) {
   switch(why) {
   case Server::NO_SHUTDOWN:
     return "No shutdown requested";
+  case Server::FORGET_THIS_CONNECTION:
+    return "Connection passed to another thread";
   case Server::CLIENT_CLOSE:
     return "Client connection closed";
   case Server::CLIENT_TIMEOUT:
@@ -1072,14 +1075,13 @@ void * serv_main(void *serv) {
 	      conn->decrypt(cbuf->buffer() + conn->m_read_fill, ret);
 	    }
 	    conn->m_read_fill += ret;
-	    u_int read_off = 0;
 
 	    NetworkMessage *msg = NULL;
 	    Server::reason_t conn_reason = Server::NO_SHUTDOWN;
 	    do {
 	      try {
-		msg = conn->make_if_enough(cbuf->buffer()+read_off,
-					   conn->m_read_fill-read_off,
+		msg = conn->make_if_enough(cbuf->buffer()+conn->m_read_off,
+					   conn->m_read_fill-conn->m_read_off,
 					   &to_read, conn->m_bigbuf != NULL);
 	      }
 	      catch (const overlong_message &e) {
@@ -1087,8 +1089,8 @@ void * serv_main(void *serv) {
 			conn->fd(), e.claimed_len());
 		if (log) {
 		  log->dump_contents(Logger::LOG_DEBUG,
-				     cbuf->buffer()+read_off,
-				     conn->m_read_fill-read_off);
+				     cbuf->buffer()+conn->m_read_off,
+				     conn->m_read_fill-conn->m_read_off);
 		}
 		// we cannot continue, but it may not be cause to shut down
 		conn_reason = Server::PROTOCOL_ERROR;
@@ -1113,11 +1115,11 @@ void * serv_main(void *serv) {
 		    // the checks that throw overlong_message are intended to
 		    // ensure that to_read is a reasonable size (and not
 		    // something to DoS me)
-		    conn->m_bigbuf = new Buffer(to_read,
-						cbuf->buffer()+read_off, true,
-						conn->m_read_fill-read_off);
-		    conn->m_read_fill -= read_off;
-		    read_off = 0;
+		    conn->m_bigbuf
+		      = new Buffer(to_read, cbuf->buffer()+conn->m_read_off,
+				   true, conn->m_read_fill-conn->m_read_off);
+		    conn->m_read_fill -= conn->m_read_off;
+		    conn->m_read_off = 0;
 		  }
 		}
 		break; // pop out of do..while loop
@@ -1129,19 +1131,18 @@ void * serv_main(void *serv) {
 #ifdef DEBUG_ENABLE
 	      size_t used_len = msg->message_len();
 #endif
-	      read_off += msg->message_len();
+	      conn->m_read_off += msg->message_len();
 
 	      conn_reason = server->message_read(conn, msg);
-#ifdef DEBUG_ENABLE
-	      if (!conn->m_bigbuf) {
-		// this should cause all kinds of nice problems if a message
-		// is being used after this moment, but it still refers to
-		// the contents of the read buffer
-		memset(cbuf->buffer()+read_off-used_len, 0xf0, used_len);
-	      }
-#endif
 	      if (conn_reason != Server::NO_SHUTDOWN) {
-		CHECK_SHUTDOWN(server->conn_shutdown(conn, conn_reason),);
+		if (conn_reason == Server::FORGET_THIS_CONNECTION) {
+		  // we are not allowed to dereference conn --
+		  // server->message_read() had better have removed the
+		  // conn from the list!
+		}
+		else {
+		  CHECK_SHUTDOWN(server->conn_shutdown(conn, conn_reason),);
+		}
 		break; // pop out of do..while loop
 	      }
 	      else if (conn->m_bigbuf) {
@@ -1150,7 +1151,16 @@ void * serv_main(void *serv) {
 		conn->m_read_fill = 0;
 		break; // we are done with all that's been read, by definition
 	      }
-	    } while (msg && (conn->m_read_fill > read_off));
+#ifdef DEBUG_ENABLE
+	      else {
+		// this should cause all kinds of nice problems if a message
+		// is being used after this moment, but it still refers to
+		// the contents of the read buffer
+		memset(cbuf->buffer()+conn->m_read_off-used_len,
+		       0xf0, used_len);
+	      }
+#endif
+	    } while (msg && (conn->m_read_fill > conn->m_read_off));
 
 	    if (IN_SHUTDOWN()) {
 	      break;
@@ -1159,16 +1169,18 @@ void * serv_main(void *serv) {
 	      continue; // go on to next connection
 	    }
 
-	    if (read_off < conn->m_read_fill) {
-	      if (read_off > 0) {
-		conn->m_read_fill -= read_off;
+	    if (conn->m_read_off < conn->m_read_fill) {
+	      if (conn->m_read_off > 0) {
+		conn->m_read_fill -= conn->m_read_off;
 		memmove(conn->m_readbuf->buffer(),
-			conn->m_readbuf->buffer()+read_off, conn->m_read_fill);
+			conn->m_readbuf->buffer()+conn->m_read_off,
+			conn->m_read_fill);
 	      }
 	    }
 	    else {
 	      conn->m_read_fill = 0;
 	    }
+	    conn->m_read_off = 0;
 	  }
 	}
 	if (FD_ISSET(conn->fd(), &writefds)) {

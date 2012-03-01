@@ -166,6 +166,9 @@ public:
   void set_timer(TimerQueue::Timer *timer);
 
 protected:
+  // helper function
+  reason_t handle_join_request(Connection *conn, NetworkMessage *in);
+
   // backend connection(s)
   struct sockaddr_in m_vault_addr;
   Connection *m_vault;
