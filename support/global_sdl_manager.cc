@@ -508,7 +508,7 @@ int main(int argc, char *argv[]) {
 	      }
 	      else {
 		db->C->perform(VaultSaveNode_Request(
-					current_node->num_ref(NodeID),
+					current_node->num_val(NodeID),
 					current_node, save_result,
 					/*Logger*/NULL));
 		if (save_result == NO_ERROR) {
