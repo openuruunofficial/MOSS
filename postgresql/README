@@ -14,6 +14,10 @@ If you are using >= 8.3 *and* want a "uuid" type, use:
 	create or replace function uuid() returns uuid as 'moss_uuidgen',
 	'moss_uuidgen' language 'C' strict;
 
+If you are using >= 9.1, you need to create an extension instead:
+	psql -U postgres moss -c "CREATE EXTENSION moss_uuidgen"
+
+
 (The uuid() function is included in moss.sql so you don't need to install it
 yourself. But you do still need to copy the new module into the DB install
 and restart. All MOSS code assumes you are using the text version provided in
