@@ -14,25 +14,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-dnl     Autoconf requirements
-dnl     `AC_INIT(PACKAGE, VERSION, BUG-REPORT-ADDRESS)'
-dnl     information on the package
-dnl     checks for programs
-dnl     checks for libraries
-dnl     checks for header files
-dnl     checks for types
-dnl     checks for structures
-dnl     checks for compiler characteristics
-dnl     checks for library functions
-dnl     checks for system services
-dnl     `AC_CONFIG_FILES([FILE...])'
-dnl     `AC_OUTPUT'
-
 AC_INIT([moss], [1.0])
 
 AC_CONFIG_MACRO_DIR([aclocal])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([subdir-objects])
 AC_CONFIG_SRCDIR([dispatcher.cc])
 AC_CONFIG_HEADERS([config.h])
 

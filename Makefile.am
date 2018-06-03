@@ -125,8 +125,11 @@ UruString_tester_LDADD = UruString.o
 pcap_replay_SOURCES = test/pcap_replay.c
 pcap_replay_LDADD = -lpcap
 sdl_reader_SOURCES = test/sdl_reader.cc
-sdl_reader_LDADD = libmoss.la libmoss_serv.la -lz @ssl_libs@
+sdl_reader_LDADD = libmoss_serv.la libmoss.la -lz @ssl_libs@
 TimerQueue_tester_SOURCES = test/TimerQueue_tester.cc
-TimerQueue_tester_LDADD = libmoss.la libmoss_serv.la -lz @ssl_libs@
+TimerQueue_tester_LDADD = libmoss_serv.la libmoss.la -lz @ssl_libs@
 age_reader_SOURCES = test/age_reader.cc
-age_reader_LDADD = libmoss.la libmoss_serv.la -lz @ssl_libs@
+age_reader_LDADD = libmoss_serv.la libmoss.la -lz @ssl_libs@
+
+clean-local:
+	-rm -f $(EXTRA_PROGRAMS)

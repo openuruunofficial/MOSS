@@ -530,7 +530,7 @@ void * serv_main(void *serv) {
   Server::Connection *conn;
 
   // local state
-  int exit_value = 1;
+  intptr_t exit_value = 1;
   int i, j;
   struct iovec *iov = NULL;
   u_int wrote;
