@@ -43,6 +43,7 @@
 #include <deque>
 #include <string>
 #include <sstream>
+#include <iomanip>
 
 #ifdef USE_POSTGRES
 #ifdef USE_PQXX

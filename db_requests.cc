@@ -30,6 +30,7 @@
 #include <list>
 #include <string>
 #include <sstream>
+#include <iomanip>
 
 #ifdef USE_POSTGRES
 #ifdef USE_PQXX
@@ -52,6 +53,19 @@
 
 
 #ifdef USE_POSTGRES
+
+#ifdef USE_PQXX
+std::string ESC_BIN(pqxx::transaction_base &T, const u_char *s, u_int len) {
+  std::stringstream res;
+  res << std::oct << std::setfill('0');
+  for (u_int i = 0; i < len; i++) {
+    res << std::setw(2) << "\\\\" << std::setw(3) << (int)s[i];
+  }
+  // copying is fun!
+  return res.str();
+}
+#endif
+
 #ifndef USE_PQXX
 void AuthAcctLogin_AcctQuery(BackendObj *conn, char *name,
 			     AuthAcctLogin_AcctQuery_Result &result) {

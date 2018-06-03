@@ -137,9 +137,6 @@ After creating the database, compile and load the custom uuid module/extension
 in the postgresql directory in the source tree and install it.  Do not proceed
 with the setup until the extension is installed.
 
-If you are using PostgreSQL >=9.1, you will need to edit your postgresql.conf
-and set "standard_conforming_strings" to "off".
-
 Also, check pg_hba.conf and verify that local Unix domain socket connections
 are set to use "md5" authentication method.  The various distributions set 
 this value differently.
