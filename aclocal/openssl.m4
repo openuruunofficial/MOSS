@@ -19,7 +19,8 @@ dnl Find OpenSSL library
 
 dnl The variable $moss_using_openssl is set to "yes" or "no"; if "yes"
 dnl the variables $moss_openssl_CPPFLAGS, $moss_openssl_LDFLAGS, and
-dnl $moss_openssl_LIBS are set.
+dnl $moss_openssl_LIBS are set. In addition, $moss_openssl_has_rc4 and
+dnl $moss_openssl_has_sha indicate if RC4 and SHA were found, respectively.
 
 AC_DEFUN([MOSS_OPENSSL], [
 
@@ -49,35 +50,50 @@ AC_DEFUN([MOSS_OPENSSL], [
 		CPPFLAGS="$CPPFLAGS -I$moss_openssl_path/include"
 		LDFLAGS="$LDFLAGS -L$moss_openssl_path/lib"
 	fi
-	LIBS="$LIBS -lssl"
-	AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <openssl/ssl.h>]])],
-	  [AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <openssl/ssl.h>]],
-		[[SSL_new(NULL)]])],
-	    [AC_MSG_RESULT([yes])
-	     if test x$moss_openssl_path = x; then
-		moss_openssl_CPPFLAGS=""
-		moss_openssl_LDFLAGS=""
-		moss_openssl_LIBS="-lssl"
-	     else
-		moss_openssl_CPPFLAGS="-I$moss_openssl_path/include"
-		moss_openssl_LDFLAGS="-L$moss_openssl_path/lib"
-		moss_openssl_LIBS="-lssl"
-	     fi
-	     dnl on Mac OS X some symbols are in libcrypto instead
-	     AC_MSG_CHECKING([whether -lcrypto is required])
-	     AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <openssl/dh.h>]],
-			[[DH_free(NULL)]])],
-	      [AC_MSG_RESULT([no])],
-	      [LIBS="$LIBS -lcrypto"
-	       AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <openssl/dh.h>]],
-			[[DH_free(NULL)]])],
-	         [AC_MSG_RESULT([yes])
-		  moss_openssl_LIBS="$moss_openssl_LIBS -lcrypto"],
-		 [AC_MSG_ERROR([[I don't know where to find DH routines]])])])],
-	    [AC_MSG_RESULT([no])
-		moss_using_openssl="no"])],
-	  [AC_MSG_RESULT([no])
-		moss_using_openssl="no"])
+	dnl it seems libssl used to include our stuff but now it's libcrypto
+	LIBS="$moss_cached_LIBS -lssl"
+	moss_openssl_LIBS=""
+	AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <openssl/rand.h>]],
+		[[return RAND_status();]])],
+	  [moss_openssl_LIBS="-lssl"],[])
+	if test x$moss_use_ssl_lib = x; then
+		LIBS="$moss_cached_LIBS -lcrypto"
+		AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <openssl/rand.h>]],
+			[[return RAND_status();]])],
+		  [moss_openssl_LIBS="-lcrypto"],[])
+	fi
+	if test x$moss_openssl_LIBS = x; then
+		AC_MSG_RESULT([no])
+		moss_using_openssl="no"
+	else
+		AC_MSG_RESULT([yes])
+		if test x$moss_openssl_path = x; then
+			moss_openssl_CPPFLAGS=""
+			moss_openssl_LDFLAGS=""
+		else
+			moss_openssl_CPPFLAGS="-I$moss_openssl_path/include"
+			moss_openssl_LDFLAGS="-L$moss_openssl_path/lib"
+		fi
+	fi
+
+	dnl OpenSSL has been removing things we need
+	if test x$moss_using_openssl = xyes; then
+	   AC_MSG_CHECKING([for OpenSSL SHA-0])
+	   AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <openssl/sha.h>]],
+		[[SHA_CTX c;
+		  SHA_Init(&c);]])],
+	     [AC_MSG_RESULT([yes])
+		AC_DEFINE(HAVE_OPENSSL_SHA,1,[Define to 1 if OpenSSL provides SHA-0.])
+		moss_openssl_has_sha="yes"],
+	     [AC_MSG_RESULT([no])])
+	   AC_MSG_CHECKING([for OpenSSL RC4])
+	   AC_COMPILE_IFELSE([AC_LANG_SOURCE([[#include <openssl/rc4.h>
+		RC4_KEY rc4;]])],
+	     [AC_MSG_RESULT([yes])
+		AC_DEFINE(HAVE_OPENSSL_RC4,1,[Define to 1 if OpenSSL provides RC4.])
+		moss_openssl_has_rc4="yes"],
+	     [AC_MSG_RESULT([no])])
+	fi
 
 	CPPFLAGS="$moss_cached_CPPFLAGS"
 	LDFLAGS="$moss_cached_LDFLAGS"

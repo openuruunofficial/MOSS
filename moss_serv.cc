@@ -61,21 +61,28 @@
 #include <algorithm> /* for heap */
 
 #ifdef HAVE_OPENSSL
-#include <openssl/rc4.h>
-#include <openssl/rand.h>
+#include <sys/stat.h>
 #ifdef USING_RSA
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #endif
 #ifdef USING_DH
 #include <openssl/dh.h>
+#include <openssl/bn.h>
 #include <openssl/asn1t.h>
+#include <openssl/bio.h>
+#include "dh_keyfile.h"
 #endif
 #else
-#include "rc4.h"
 #if defined(USING_RSA) || defined(USING_DH)
 #error OpenSSL is required to use RSA or D-H!
 #endif
+#endif /* HAVE_OPENSSL */
+
+#ifdef HAVE_OPENSSL_RC4
+#include <openssl/rc4.h>
+#else
+#include "rc4.h"
 #endif
 
 #include "machine_arch.h"
@@ -215,65 +222,67 @@ Server::connect_to_backend(const struct sockaddr_in *vault_addr) {
   return vault;
 }
 
-#ifdef USING_DH
-/*
- * The following OpenSSL ASN1 goo is because OpenSSL does not already have
- * functions to write out the D-H parameters as needed by the modified D-H
- * we have.
- */
-#if OPENSSL_VERSION_NUMBER >= 0x00909000L
-static int dh_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
-		 void *exarg)
-#else
-static int dh_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it)
-#endif
-{
-  if (operation == ASN1_OP_NEW_PRE) {
-    *pval = (ASN1_VALUE *)DH_new();
-    if (*pval) return 2;
-    return 0;
-  } else if(operation == ASN1_OP_FREE_PRE) {
-    DH_free((DH *)*pval);
-    *pval = NULL;
-    return 2;
-  }
-  return 1;
-}
-ASN1_SEQUENCE_cb(CyanDHParams, dh_cb) = {
-  ASN1_SIMPLE(DH, p, BIGNUM),
-  ASN1_SIMPLE(DH, g, BIGNUM),
-  ASN1_SIMPLE(DH, priv_key, BIGNUM)
-} ASN1_SEQUENCE_END_cb(DH, CyanDHParams)
-IMPLEMENT_ASN1_FUNCTIONS_name(DH, CyanDHParams)
-#define i2d_CyanDHParams_fp(fp,dh) ASN1_i2d_fp_of(DH,i2d_CyanDHParams,fp,dh)
-#define d2i_CyanDHParams_fp(fp,dh) ASN1_d2i_fp_of(DH,DH_new,d2i_CyanDHParams,fp,dh)
-#endif /* USING_DH */
-
 void * Server::read_keyfile(const char *fname, Logger *log) {
 #ifdef USING_RSA
-  FILE *file = fopen(fname, "r");
-  if (!file) {
+  int fd = open(fname, O_RDONLY);
+  if (fd < 0) {
     log_err(log, "Error opening key file %s\n", fname);
     return NULL;
   }
+  BIO *bio = BIO_new_fd(fd, BIO_CLOSE);
   RSA *rsa = NULL;
-  if (!(rsa = d2i_RSAPrivateKey_fp(file, NULL))) {
+  if (!(rsa = d2i_RSAPrivateKey_bio(bio, NULL))) {
     log_err(log, "Error reading key file %s\n", fname);
   }
-  fclose(file);
+  BIO_free(bio);
   return (void *)rsa;
 #else
 #ifdef USING_DH
-  FILE *file = fopen(fname, "r");
-  if (!file) {
+  int fd = open(fname, O_RDONLY);
+  if (fd < 0) {
     log_err(log, "Error opening key file %s\n", fname);
     return NULL;
   }
-  DH *dh = NULL;
-  if (!(dh = d2i_CyanDHParams_fp(file, NULL))) {
+  BIO *bio = BIO_new_fd(fd, BIO_CLOSE);
+  dh_params *dhp = d2i_CyanDHParams_bio(bio, NULL);
+  BIO_free(bio);
+  if (!dhp) {
     log_err(log, "Error reading key file %s\n", fname);
+    return NULL;
   }
-  fclose(file);
+  DH *dh = DH_new();
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  dh->p = dhp->p;
+  dh->g = dhp->g;
+  dh->priv_key = dhp->priv_key;
+#else
+  int ok = DH_set0_pqg(dh, dhp->p, NULL, dhp->g);
+  if (!ok) {
+    log_err(log, "Error setting DH p and g\n");
+  }
+  else {
+    /* 
+     * some versions of OpenSSL unnecessarily required a non-NULL
+     * public key
+     */
+    BIGNUM *pub_key = BN_new();
+    ok = DH_set0_key(dh, pub_key, dhp->priv_key);
+    if (!ok) {
+      log_err(log, "Error setting DH private key\n");
+      /* p and g already adopted */
+      dhp->p = NULL;
+      dhp->g = NULL;
+      BN_free(pub_key);
+    }
+  }
+  if (!ok) {
+    cleanup_dh_params(dhp);
+    free(dhp);
+    DH_free(dh);
+    return NULL;
+  }
+#endif /* OPENSSL_VERSION_NUMBER */
+  free(dhp);
   return (void *)dh;
 #else
   return NULL;
@@ -282,7 +291,7 @@ void * Server::read_keyfile(const char *fname, Logger *log) {
 }
 
 void Server::Connection::set_rc4_key(const u_char *session_key) {
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_OPENSSL_RC4
   m_c2s_rc4 = new RC4_KEY;
   m_s2c_rc4 = new RC4_KEY;
   RC4_set_key(m_c2s_rc4, 7, session_key);

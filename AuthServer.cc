@@ -45,7 +45,6 @@
 #include <vector>
 
 #ifdef HAVE_OPENSSL
-#include <openssl/rc4.h>
 #ifdef USING_RSA
 #include <openssl/rsa.h>
 #endif
@@ -53,10 +52,15 @@
 #include <openssl/dh.h>
 #endif
 #else
-#include "rc4.h"
 #if defined(USING_RSA) || defined(USING_DH)
 #error OpenSSL is required to use RSA or D-H!
 #endif
+#endif
+
+#ifdef HAVE_OPENSSL_RC4
+#include <openssl/rc4.h>
+#else
+#include "rc4.h"
 #endif
 
 #include "machine_arch.h"

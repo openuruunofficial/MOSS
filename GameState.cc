@@ -41,9 +41,8 @@
 #include <list>
 #include <vector>
 
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_OPENSSL_RC4
 #include <openssl/rc4.h>
-#include <openssl/rand.h>
 #else
 #include "rc4.h"
 #endif

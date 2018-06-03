@@ -138,12 +138,13 @@ fi
 
 MOSS_OPENSSL
 AM_CONDITIONAL(HAVE_OPENSSL, test "x$moss_using_openssl" = "xyes")
+AM_CONDITIONAL(HAVE_OPENSSL_RC4, test "x$moss_openssl_has_rc4" = "xyes")
+AM_CONDITIONAL(HAVE_OPENSSL_SHA, test "x$moss_openssl_has_sha" = "xyes")
 if test x$moss_using_openssl = xno; then
 	if test x$moss_need_openssl = xyes; then
 		AC_MSG_ERROR([OpenSSL is required for --enable-encryption=$enable_encryption])
 	else
 		AC_MSG_WARN([[No OpenSSL; things won't work quite as well]])
-		AC_MSG_WARN([[(also, you MUST NOT use email addresses as usernames)]])
 		AC_SUBST(ssl_libs,"")
 	fi
 else

@@ -16,11 +16,20 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#ifdef HAVE_OPENSSL_SHA
 #include <openssl/sha.h>
+#else
+#include <stdint.h>
+#include "sha.h"
+#endif
 
 int main(int argc, char *argv[]) {
   unsigned int size, i;
@@ -56,7 +65,11 @@ int main(int argc, char *argv[]) {
   *cp++ = '\0';
   *cp++ = '\0';
 
+#ifdef HAVE_OPENSSL_SHA
   SHA(input, size, hash);
+#else
+  sha0_hash(input, size, hash);
+#endif
   free(input);
 
   for (i = 0; i < 20; i++) {

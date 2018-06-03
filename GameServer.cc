@@ -46,7 +46,7 @@
 #include <iostream>
 #include <fstream>
 
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_OPENSSL_RC4
 #include <openssl/rc4.h>
 #else
 #include "rc4.h"
