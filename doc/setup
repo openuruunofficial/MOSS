@@ -131,9 +131,20 @@ Database Setup
 --------------
 The database should be set up with a user (default is "moss") with sufficient
 permissions to modify tables, etc. Be sure to create the database with UTF8
-encoding. The database routines used by MOSS must be loaded into the DB from
-moss.sql, which expects the user to be named "moss". If you wish a different
-name you will have to edit moss.sql to match, and set up the correct user in
+encoding.
+
+After creating the database, compile and load the custom uuid module/extension
+in the postgresql directory in the source tree and install it.  Do not proceed
+with the setup until the extension is installed.
+
+Also, check pg_hba.conf and verify that local Unix domain socket connections
+are set to use "md5" authentication method.  The various distributions set 
+this value differently.
+
+
+The database routines used by MOSS must be loaded into the DB from moss.sql,
+which expects the user to be named "moss". If you wish a different name you
+will have to edit moss.sql to match, and set up the correct user in
 backend.cfg.
 
 The routines need only be loaded once.

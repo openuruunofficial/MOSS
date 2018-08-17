@@ -63,9 +63,9 @@ Datum moss_uuidgen_text(PG_FUNCTION_ARGS) {
   text * uuid_string = (text *)palloc(37 + VARHDRSZ);
 
 #if PG_VERSION_NUM < 80300
-  VARATT_SIZEP(uuid_string) = 37 + VARHDRSZ;
+  VARATT_SIZEP(uuid_string) = 36 + VARHDRSZ;
 #else
-  SET_VARSIZE(uuid_string, 37 + VARHDRSZ);
+  SET_VARSIZE(uuid_string, 36 + VARHDRSZ);
 #endif
   snprintf(VARDATA(uuid_string), 37,
 	"%08x-%04x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",

@@ -38,6 +38,7 @@
 //#include <list>
 //#include <vector>
 //#include <sstream>
+//#include <iomanip>
 //#include <map>
 //
 //#include "protocol.h"
@@ -151,11 +152,18 @@ public:
 // different quoting functionality.
 #ifdef PQXX_TRANS_ESC
 #define ESC_STR(T, s) (T).esc(s)
-#define ESC_BIN(T, s, len) (T).esc_raw(s, len)
 #else
 #define ESC_STR(T, s) pqxx::sqlesc(s)
-#define ESC_BIN(T, s, len) pqxx::escape_binary(s, len)
 #endif
+
+// pqxx's esc_raw (which appears to call PQescapeByteaConn) does not seem
+// to work with standard_conforming_strings=on (default since postgresql 9.1).
+// It quotes pure binary data as 0x12345678 -> '\x12345678' which gets turned
+// into (hex): 12 33 34 35 36 37 38 (the first byte the actual value, the rest
+// ASCII representations of the hex values).
+// There doesn't seem to be a version that just does straight binary quoting.
+// This will quote as '\\022\\064\\126\\170' producing (hex): 12 34 56 78.
+std::string ESC_BIN(pqxx::transaction_base &T, const u_char *s, u_int len);
 #endif /* USE_PQXX */
 
 

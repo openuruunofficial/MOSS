@@ -16,15 +16,21 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <getopt.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#include <fcntl.h>
 
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
-#include <openssl/asn1.h>
+#include <openssl/bio.h>
 
 int main(int argc, char *argv[]) {
   char c;
@@ -38,7 +44,9 @@ int main(int argc, char *argv[]) {
   };
 
   char *server_fname = NULL, *client_fname = NULL;
-  FILE *inf, *serverf, *clientf;
+  int infd, serverfd;
+  FILE *clientf;
+  BIO *inio, *serverio, *clientio;
   RSA *rsa;
 
   while ((c = getopt_long(argc, argv, "s:c:h", options, NULL)) != -1) {
@@ -67,28 +75,30 @@ int main(int argc, char *argv[]) {
   }
   /* we have now processed the arguments */
 
-  inf = fopen(argv[argc-1], "r");
-  if (!inf) {
+  infd = open(argv[argc-1], O_RDONLY);
+  if (infd < 0) {
     fprintf(stderr, "Cannot open file %s: %s\n", argv[argc-1],
 	    strerror(errno));
     return 1;
   }
-  rsa = PEM_read_RSAPrivateKey(inf, NULL, 0, NULL);
-  fclose(inf);
+  inio = BIO_new_fd(infd, BIO_CLOSE);
+  rsa = PEM_read_bio_RSAPrivateKey(inio, NULL, 0, NULL);
+  BIO_free(inio);
   if (!rsa) {
     fprintf(stderr, "Failed to read key from file %s\n", argv[argc-1]);
     return 1;
   }
-  serverf = fopen(server_fname, "w");
-  if (!serverf) {
+  serverfd = open(server_fname, O_RDONLY);
+  if (serverfd < 0) {
     fprintf(stderr, "Failed to open %s for write: %s\n", server_fname,
 	    strerror(errno));
   }
   else {
-    if (!i2d_RSAPrivateKey_fp(serverf, rsa)) {
+    serverio = BIO_new_fd(serverfd, BIO_CLOSE);
+    if (!i2d_RSAPrivateKey_bio(serverio, NULL)) {
       fprintf(stderr, "Failed to write key to file %s\n", server_fname);
     }
-    fclose(serverf);
+    BIO_free(serverio);
   }
   clientf = fopen(client_fname, "w");
   if (!clientf) {

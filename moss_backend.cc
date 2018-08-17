@@ -24,6 +24,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include <stdarg.h>
 #include <pthread.h>
@@ -52,7 +55,7 @@
 #endif
 
 #include <getopt.h>
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_OPENSSL_RC4
 #include <openssl/rc4.h>
 #else
 #include "rc4.h"

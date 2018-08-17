@@ -123,22 +123,22 @@ int SDLDesc::parse_directory(Logger *log, std::list<SDLDesc*> &sdls,
     }
     return 1;
   }
-  struct dirent entry;
-  struct dirent *result;
-  // this needs to be thread-safe because more than one game server could
-  // be loading SDL files at the same time
+  struct dirent *entry;
   int ret;
-  while ((ret = readdir_r(dir, &entry, &result)) == 0) {
-    if (!result) {
-      break;
-    }
-    ret = strlen(entry.d_name);
-    if (ret > 4 && !strcasecmp(entry.d_name+(ret-4), ".sdl")) {
+  /* 
+   * "To distinguish end of stream from an error, set errno before calling
+   * readdir() and then check the value of errno if NULL is returned."
+   */
+  errno = 0;
+  entry = readdir(dir);
+  while (entry != NULL) {
+    ret = strlen(entry->d_name);
+    if (ret > 4 && !strcasecmp(entry->d_name+(ret-4), ".sdl")) {
       std::list<SDLDesc*> these;
-      std::ifstream file((dirname + PATH_SEPARATOR + entry.d_name).c_str(),
+      std::ifstream file((dirname + PATH_SEPARATOR + entry->d_name).c_str(),
 			 std::ios_base::binary | std::ios_base::in);
       if (file.fail()) {
-	log_err(log, "Cannot open file %s\n", entry.d_name);
+	log_err(log, "Cannot open file %s\n", entry->d_name);
 	closedir(dir);
 	return -1;
       }
@@ -146,20 +146,23 @@ int SDLDesc::parse_directory(Logger *log, std::list<SDLDesc*> &sdls,
 	SDLDesc::parse_file(these, file);
       }
       catch (const parse_error &e) {
-	log_err(log, "Parse error in file %s line %u: %s\n", entry.d_name,
+	log_err(log, "Parse error in file %s line %u: %s\n", entry->d_name,
 		e.lineno(), e.what());
 	closedir(dir);
 	return -1;
       }
       sdls.splice(sdls.end(), these);
     }
+    errno = 0;
+    entry = readdir(dir);
   }
-  closedir(dir);
-  if (ret) {
+  if (errno) {
     log_err(log, "Error reading directory %s: %s\n", dirname.c_str(),
 	    strerror(errno));
+    closedir(dir);
     return -1;
   }
+  closedir(dir);
   if (is_common) {
     // now, move the most common SDLs to the front of the list
     std::list<SDLDesc*>::iterator avatarPhysical, avatar, MorphSequence,

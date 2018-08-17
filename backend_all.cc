@@ -24,6 +24,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include <stdarg.h>
 #include <pthread.h>
@@ -40,6 +43,7 @@
 #include <deque>
 #include <string>
 #include <sstream>
+#include <iomanip>
 
 #ifdef USE_POSTGRES
 #ifdef USE_PQXX
@@ -53,12 +57,15 @@
 #error "postgres is required"
 #endif
 
-#ifdef HAVE_OPENSSL
-#include <openssl/rand.h>
+#ifdef HAVE_OPENSSL_RC4
 #include <openssl/rc4.h>
-#include <openssl/sha.h>
 #else
 #include "rc4.h"
+#endif
+#ifdef HAVE_OPENSSL_SHA
+#include <openssl/sha.h>
+#else
+#include "sha.h"
 #endif
 
 #include "machine_arch.h"
@@ -169,13 +176,10 @@ Server::reason_t BackendServer::handle_auth(Connection *c,
 	  write32le(inbuf, 0, msg->client_nonce());
 	  write32le(inbuf, 4, msg->server_nonce());
 	  memcpy(inbuf+8, login_result.hash, 20);
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_OPENSSL_SHA
 	  SHA(inbuf, 28, new_hash);
 #else
-	  // cannot verify password!
-	  log_err(m_log, "Cannot verify password for user %s (no OpenSSL)\n",
-		  msg->name()->c_str());
-	  login_result.result_code = ERROR_LOGIN_DENIED;
+	  sha0_hash(inbuf, 28, new_hash);
 #endif
 	}
 	if (login_result.result_code == NO_ERROR) {

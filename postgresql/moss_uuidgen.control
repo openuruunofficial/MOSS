@@ -1,0 +1,4 @@
+# moss_uuid extension
+comment = 'Generates UUIDs for moss.  We use this because there was no UUID type when moss was written, and I do not want to rewrite moss to use pgsql''s uuid type'
+default_version = '1.0'
+relocatable = true 

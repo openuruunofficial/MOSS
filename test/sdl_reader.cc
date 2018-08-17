@@ -35,7 +35,6 @@
 #include <list>
 #include <vector>
 
-#include "config.h"
 #include "machine_arch.h"
 #include "protocol.h"
 #include "exceptions.h"

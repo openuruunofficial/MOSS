@@ -318,15 +318,13 @@ begin
         Split(FileList[FileIndex],',',WorkList);
         If Worklist.Count <> 3 then
         Begin
-          if (WorkList.Count = 0) or  (LeftStr(WorkList[0],1) = '#') or (LeftStr(WorkList[0],1) = '') then
-            // do nothing - comment line or blank line
-          else
-          begin
             Form1.Memo1.Lines.Add('  *** ERROR*** :  Incorrect number of parameters on line ' + IntToStr(FileIndex + 1)
                                   + '.  Skipping it.');
             ErrorFlag:=true;
-          end;
         end
+        else
+        if (WorkList.Count = 0) or  (LeftStr(WorkList[0],1) = '#') or (LeftStr(WorkList[0],1) = '') then
+          //do nothing - comment line or blank line
         else
         begin
           with DataServerManifest[ParseManifestIndex] do

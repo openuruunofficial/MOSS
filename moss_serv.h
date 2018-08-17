@@ -25,12 +25,15 @@
 
 //#include <pthread.h>
 //#include <signal.h>
+//#ifdef HAVE_UNISTD_H
+//#include <uinstd.h>
+//#endif
 //
 //#include <sys/time.h>
 //
 //#include <netinet/in.h>
 //
-//#ifdef HAVE_OPENSSL
+//#ifdef HAVE_OPENSSL_RC4
 //#include <openssl/rc4.h>
 //#else
 //#include "rc4.h"
@@ -414,14 +417,14 @@ public:
     }
     // do not call these without having called set_encrypted and set_rc4_key!
     void encrypt(u_char *buf, size_t len) {
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_OPENSSL_RC4
       RC4(m_s2c_rc4, len, buf, buf);
 #else
       rc4_encrypt(m_s2c_rc4, buf, len);
 #endif
     }
     void decrypt(u_char *buf, size_t len) {
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_OPENSSL_RC4
       RC4(m_c2s_rc4, len, buf, buf);
 #else
       rc4_encrypt(m_c2s_rc4, buf, len);
@@ -435,7 +438,7 @@ public:
     MessageQueue *m_msg_queue;
 
     bool m_is_encrypted;
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_OPENSSL_RC4
     RC4_KEY *m_c2s_rc4;
     RC4_KEY *m_s2c_rc4;
 #else
