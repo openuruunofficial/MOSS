@@ -146,11 +146,65 @@ inline void log_err(Logger *logger, const char *fmt, ...) {
   }
   va_end(ap);
 }
+
+#ifdef __GNUC__
+inline std::string methodName(const char *prettyFuncNameChars)
+{
+	std::string prettyFuncName(prettyFuncNameChars);
+
+	size_t end = prettyFuncName.length() - 1;
+
+	if (prettyFuncName.substr(end, 1).compare(")") == 0) {
+		uint_t lvl = 1;
+		while (lvl > 0 && end >= 0) {
+			end -= 1;
+			if (prettyFuncName.substr(end, 1).compare(")") == 0)
+				lvl += 1;
+			else if (prettyFuncName.substr(end, 1).compare("(") == 0)
+				lvl -= 1;
+		}
+	}
+	size_t begin = prettyFuncName.substr(0, end).rfind(" ") + 1;
+
+	return prettyFuncName.substr(begin, end-begin) + "()";
+}
+inline std::string methodName(std::string prettyFuncName)
+{
+	size_t end = prettyFuncName.length() - 1;
+
+	if (prettyFuncName.substr(end, 1).compare(")") == 0) {
+		uint_t lvl = 1;
+		while (lvl > 0 && end >= 0) {
+			end -= 1;
+			if (prettyFuncName.substr(end, 1).compare(")") == 0)
+				lvl += 1;
+			else if (prettyFuncName.substr(end, 1).compare("(") == 0)
+				lvl -= 1;
+		}
+	}
+	size_t begin = prettyFuncName.substr(0, end).rfind(" ") + 1;
+
+	return prettyFuncName.substr(begin, end-begin) + "()";
+}
+#define __METHOD_NAME__ methodName(__PRETTY_FUNCTION__)
+#define LOGGER_WHERE __METHOD_NAME__, __LINE__
+
+#define log_info(logger, ...) log_at(Logger::LOG_INFO, logger, __VA_ARGS__)
+#define log_warn(logger, ...) log_at_where(Logger::LOG_WARN, logger, LOGGER_WHERE, __VA_ARGS__)
+#define log_net(logger, ...) log_at_where(Logger::LOG_NET, logger, LOGGER_WHERE, __VA_ARGS__)
+#define log_debug(logger, ...) log_at_where(Logger::LOG_DEBUG, logger, LOGGER_WHERE, __VA_ARGS__)
+#define log_msgs(logger, ...) log_at_where(Logger::LOG_MSGS, logger, LOGGER_WHERE, __VA_ARGS__)
+
+#else /* Non GCC */
+
 #define log_info(logger, ...) log_at(Logger::LOG_INFO, logger, __VA_ARGS__)
 #define log_warn(logger, ...) log_at(Logger::LOG_WARN, logger, __VA_ARGS__)
 #define log_net(logger, ...) log_at(Logger::LOG_NET, logger, __VA_ARGS__)
 #define log_debug(logger, ...) log_at(Logger::LOG_DEBUG, logger, __VA_ARGS__)
 #define log_msgs(logger, ...) log_at(Logger::LOG_MSGS, logger, __VA_ARGS__)
+
+#endif
+
 
 inline void log_at(Logger::level_t level, Logger *logger,
 		   const char *fmt, ...) {
@@ -161,6 +215,23 @@ inline void log_at(Logger::level_t level, Logger *logger,
     FILE *f = logger->get_lock(level);
     if (f) {
       fprintf(f, "%s", logger->get_prefix(level));
+      vfprintf(f, fmt, ap);
+      fflush(f);
+      logger->release_lock();
+    }
+    va_end(ap);
+  }
+}
+
+inline void log_at_where(Logger::level_t level, Logger *logger,
+		   std::string methodName, int lineno, const char *fmt, ...) {
+  va_list ap;
+
+  if (logger) {
+    va_start(ap, fmt);
+    FILE *f = logger->get_lock(level);
+    if (f) {
+      fprintf(f, "%s%s#%d ", logger->get_prefix(level), methodName.c_str(), lineno);
       vfprintf(f, fmt, ap);
       fflush(f);
       logger->release_lock();
