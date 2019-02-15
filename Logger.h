@@ -168,24 +168,6 @@ inline std::string methodName(const char *prettyFuncNameChars)
 
 	return prettyFuncName.substr(begin, end-begin) + "()";
 }
-inline std::string methodName(std::string prettyFuncName)
-{
-	size_t end = prettyFuncName.length() - 1;
-
-	if (prettyFuncName.substr(end, 1).compare(")") == 0) {
-		uint_t lvl = 1;
-		while (lvl > 0 && end >= 0) {
-			end -= 1;
-			if (prettyFuncName.substr(end, 1).compare(")") == 0)
-				lvl += 1;
-			else if (prettyFuncName.substr(end, 1).compare("(") == 0)
-				lvl -= 1;
-		}
-	}
-	size_t begin = prettyFuncName.substr(0, end).rfind(" ") + 1;
-
-	return prettyFuncName.substr(begin, end-begin) + "()";
-}
 #define __METHOD_NAME__ methodName(__PRETTY_FUNCTION__)
 #define LOGGER_WHERE __METHOD_NAME__, __LINE__
 
