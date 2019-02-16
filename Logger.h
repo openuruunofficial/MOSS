@@ -148,19 +148,49 @@ inline void log_err(Logger *logger, const char *fmt, ...) {
 }
 
 #ifdef __GNUC__
+/**
+ * This adds the ability to display a method name and source file line number
+ * as a prefix to log messages.
+ *
+ *  GCC __PRETTY_FUNCTION__ is a synthetic variable (not macro definition!)
+ *  that is created whenever it is referenced inside a function or method.
+ *  
+ *  It takes the format (type)[Class::]methodname(type, type...)
+ *  
+ *  Since types are not simple names, but may themselves be templates, classes,
+ *  structs, etc, they can be quite lengthy. On the logger output I only wanted
+ *  the name/line number as a prefix to help locate the source of a log message.
+ *  So I need to remove all the type descriptions without pruning away any of the
+ *  class and/or method names.
+ *  
+ *  The search for '(' and ')' locate the anchor points in the string.
+ *  The final result of methodName() is a string like "Class::methodname()"
+ *
+ *  Example:
+ *
+ *    global scope function:
+ *      __PRETTY_FUNCTION__ = "int main()"
+ *      methodName(__PRETTY_FUNCTION__) = "main()"
+ *
+ *    class method:
+ *      __PRETTY_FUNCTION__ = "void Foo::show(std::__cxx11::string)"
+ *      methodName(__PRETTY_FUNCTION__) = "Foo::show()"
+ *  
+ */
+
 inline std::string methodName(const char *prettyFuncNameChars)
 {
 	std::string prettyFuncName(prettyFuncNameChars);
 
 	size_t end = prettyFuncName.length() - 1;
 
-	if (prettyFuncName.substr(end, 1).compare(")") == 0) {
+	if (prettyFuncName[end] == ')') {
 		uint_t lvl = 1;
 		while (lvl > 0 && end >= 0) {
 			end -= 1;
-			if (prettyFuncName.substr(end, 1).compare(")") == 0)
+			if (prettyFuncName[end] == ')')
 				lvl += 1;
-			else if (prettyFuncName.substr(end, 1).compare("(") == 0)
+			else if (prettyFuncName[end] == '(')
 				lvl -= 1;
 		}
 	}
@@ -168,6 +198,7 @@ inline std::string methodName(const char *prettyFuncNameChars)
 
 	return prettyFuncName.substr(begin, end-begin) + "()";
 }
+
 #define __METHOD_NAME__ methodName(__PRETTY_FUNCTION__)
 #define LOGGER_WHERE __METHOD_NAME__, __LINE__
 
