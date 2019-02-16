@@ -120,62 +120,62 @@ char *f_dirent(dirent *d) {
 }
 
 int SDLDesc::parse_directory(Logger *log, std::list<SDLDesc*> &sdls,
-		std::string &dirname, bool is_common,
-		bool not_present_is_error) {
-	log_debug(log, "dirname=\"%s\" is_common=%s not_present_is_error=%s\n", dirname.c_str(),
-			is_common ? "true" : "false",
-			not_present_is_error ? "true" : "false");
+    std::string &dirname, bool is_common,
+    bool not_present_is_error) {
+  log_debug(log, "dirname=\"%s\" is_common=%s not_present_is_error=%s\n", dirname.c_str(),
+      is_common ? "true" : "false",
+      not_present_is_error ? "true" : "false");
 
-	DIR *dir = opendir(dirname.c_str());
-	if (!dir) {
-		if (not_present_is_error) {
-			log_err(log, "Cannot open directory %s for listing: %s\n", dirname.c_str(), strerror(errno));
-		}
-		return 1;
-	}
-	struct dirent *entry = (struct dirent *) malloc(sizeof(struct dirent) + pathconf(dirname.c_str(), _PC_NAME_MAX));
-	struct dirent *result;
+  DIR *dir = opendir(dirname.c_str());
+  if (!dir) {
+    if (not_present_is_error) {
+      log_err(log, "Cannot open directory %s for listing: %s\n", dirname.c_str(), strerror(errno));
+    }
+    return 1;
+  }
+  struct dirent *entry = (struct dirent *) malloc(sizeof(struct dirent) + pathconf(dirname.c_str(), _PC_NAME_MAX));
+  struct dirent *result;
 
-	// this needs to be thread-safe because more than one game server could
-	// be loading SDL files at the same time
-	int ret;
-	errno = 0;
-	while ((ret = readdir_r(dir, entry, &result)) == 0) {
-		if (!result) {
-			break;
-		}
-		int ret = strlen(result->d_name);
-		log_msgs(log, "result=\"%s\" %s ret=%u\n", result->d_name, f_dirent(result), ret);
-		if (ret > 4 && !strcasecmp(&result->d_name[ret - 4], ".sdl")) {
-			std::list<SDLDesc*> these;
-			std::string fname = dirname + std::string(PATH_SEPARATOR) + std::string(result->d_name);
-			log_msgs(log, "SDL open file=\"%s\" \n", fname.c_str());
-			std::ifstream file((char *) fname.c_str(), std::ios_base::binary | std::ios_base::in);
-			if (file.fail()) {
-				log_err(log, "Cannot open SDL file=\"%s\" \n", fname.c_str());
-				closedir(dir);
-				free(result);
-				return -1;
-			}
-			try {
-				SDLDesc::parse_file(these, file);
-			} catch (const parse_error &e) {
-				log_err(log, "Parse error in file %s line %u: %s\n", result->d_name, e.lineno(), e.what());
-				closedir(dir);
-				free(result);
-				return -1;
-			}
-			sdls.splice(sdls.end(), these);
-		}
-		errno = 0;
-	}
-	if (errno) {
-		log_err(log, "Error reading directory %s: %s\n", dirname.c_str(), strerror(errno));
-		closedir(dir);
-		return -1;
-	}
-	closedir(dir);
-	free(entry);
+  // this needs to be thread-safe because more than one game server could
+  // be loading SDL files at the same time
+  int ret;
+  errno = 0;
+  while ((ret = readdir_r(dir, entry, &result)) == 0) {
+    if (!result) {
+      break;
+    }
+    int ret = strlen(result->d_name);
+    log_msgs(log, "result=\"%s\" %s ret=%u\n", result->d_name, f_dirent(result), ret);
+    if (ret > 4 && !strcasecmp(&result->d_name[ret - 4], ".sdl")) {
+      std::list<SDLDesc*> these;
+      std::string fname = dirname + std::string(PATH_SEPARATOR) + std::string(result->d_name);
+      log_msgs(log, "SDL open file=\"%s\" \n", fname.c_str());
+      std::ifstream file((char *) fname.c_str(), std::ios_base::binary | std::ios_base::in);
+      if (file.fail()) {
+        log_err(log, "Cannot open SDL file=\"%s\" \n", fname.c_str());
+        closedir(dir);
+        free(result);
+        return -1;
+      }
+      try {
+        SDLDesc::parse_file(these, file);
+      } catch (const parse_error &e) {
+        log_err(log, "Parse error in file %s line %u: %s\n", result->d_name, e.lineno(), e.what());
+        closedir(dir);
+        free(result);
+        return -1;
+      }
+      sdls.splice(sdls.end(), these);
+    }
+    errno = 0;
+  }
+  if (errno) {
+    log_err(log, "Error reading directory %s: %s\n", dirname.c_str(), strerror(errno));
+    closedir(dir);
+    return -1;
+  }
+  closedir(dir);
+  free(entry);
   if (is_common) {
     // now, move the most common SDLs to the front of the list
     std::list<SDLDesc*>::iterator avatarPhysical, avatar, MorphSequence,

@@ -177,23 +177,23 @@ int recursive_mkdir( const char *pathname, mode_t mode ) {
       path[len-1] = 0;
   }
 
-	for (p = path + 1, d = p; *p; p++, d++) {
-		if (*p == PATH_SEPARATOR[0]) {
-			while (*p && (*(p + 1) == PATH_SEPARATOR[0]))
-				p++;
-			*d = '\0';
-			if (mkdir(path, mode) == -1)
-				if (errno != EEXIST)
-					return errno;
-			*d = PATH_SEPARATOR[0];
-		} else {
-			*d = *p;
-		}
-	}
+  for (p = path + 1, d = p; *p; p++, d++) {
+    if (*p == PATH_SEPARATOR[0]) {
+      while (*p && (*(p + 1) == PATH_SEPARATOR[0]))
+        p++;
+      *d = '\0';
+      if (mkdir(path, mode) == -1)
+        if (errno != EEXIST)
+          return errno;
+      *d = PATH_SEPARATOR[0];
+    } else {
+      *d = *p;
+    }
+  }
   *d = '\0';
-	if (mkdir(path, mode) == -1)
-		if (errno != EEXIST)
-			return errno;
+  if (mkdir(path, mode) == -1)
+    if (errno != EEXIST)
+      return errno;
   return 0;
 }
 
