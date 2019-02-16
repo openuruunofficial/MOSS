@@ -115,7 +115,7 @@ void SDLDesc::parse_file(std::list<SDLDesc*> &sdls, std::ifstream &file) {
 // Formatter for dirent struct
 char *f_dirent(dirent *d) {
     static char out[1024];
-    snprintf(out, sizeof(out), "{ino=%u off=%u reclen=%u name=%s}", d->d_ino, d->d_off, d->d_reclen, d->d_name);
+    snprintf(out, sizeof(out), "{ino=%u name=%s}", d->d_ino, d->d_name);
     return out;
 }
 
