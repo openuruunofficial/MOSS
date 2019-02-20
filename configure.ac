@@ -28,11 +28,8 @@ AC_SUBST(LIBTOOL_DEPS)
 
 ###### system configuration
 
-# Checks for libraries.
-AC_CHECK_LIB([pthread], [pthread_create])
-
 # Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h assert.h ctype.h dirent.h errno.h fcntl.h getopt.h iconv.h inttypes.h netdb.h netinet/in.h pthread.h signal.h stdarg.h stdint.h stdio.h stdlib.h string.h sys/mman.h sys/param.h sys/select.h sys/socket.h sys/stat.h sys/time.h sys/uio.h sys/wait.h unistd.h varargs.h])
+AC_CHECK_HEADERS([arpa/inet.h assert.h ctype.h dirent.h errno.h fcntl.h getopt.h iconv.h inttypes.h netdb.h netinet/in.h signal.h stdarg.h stdint.h stdio.h stdlib.h string.h sys/mman.h sys/param.h sys/select.h sys/socket.h sys/stat.h sys/time.h sys/uio.h sys/wait.h unistd.h varargs.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_TYPE(u_int)
@@ -65,6 +62,13 @@ AC_FUNC_MALLOC
 AC_FUNC_MMAP
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS([alarm gethostbyname getaddrinfo gethostbyname_r gettimeofday memmove memset mkdir munmap select socket strcasecmp strchr strdup strerror strstr])
+
+# Make sure compiler/OS has support for posix threads
+AX_PTHREAD([
+		AC_SUBST(AM_CFLAGS, "$AM_CFLAGS $PTHREAD_CFLAGS")
+		AC_SUBST(AM_CXXFLAGS, "$AM_CXXFLAGS $PTHREAD_CFLAGS")
+		AC_SUBST(AM_LDFLAGS, "$AM_LDFLAGS $PTHREAD_LDFLAGS")],
+	AC_MSG_ERROR([Environment must support POSIX threads]))
 
 # system config checks
 

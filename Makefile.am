@@ -70,14 +70,14 @@ if !OLD_PROTOCOL
 moss_SOURCES += GatekeeperServer.h GatekeeperServer.cc \
 	GatekeeperMessage.h GatekeeperMessage.cc
 endif
-moss_LDADD = libmoss.la libmoss_serv.la -lz -lpthread @ssl_libs@
+moss_LDADD = libmoss.la libmoss_serv.la -lz @ssl_libs@
 
 moss_backend_SOURCES = moss_backend.h moss_backend.cc backend_all.cc \
 	db_requests.h db_requests.cc
-moss_backend_LDADD = libmoss.la -lpthread @ssl_libs@ @db_libs@
+moss_backend_LDADD = libmoss.la @ssl_libs@ @db_libs@
 
 moss_serv_SOURCES = moss_child.cc
-moss_serv_LDADD = libmoss.la libmoss_serv.la -lz -lpthread
+moss_serv_LDADD = libmoss.la libmoss_serv.la -lz
 
 if HAVE_OPENSSL
 libmoss_la_LIBADD = @ssl_libs@
